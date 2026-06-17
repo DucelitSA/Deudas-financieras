@@ -6,9 +6,6 @@
   <title>Aborgama — Calculadora de Préstamos</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
   <style>
-    /* ══════════════════════════════════════
-       VARIABLES & RESET
-    ══════════════════════════════════════ */
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --green:#2d8a4e;--green-dark:#1e6638;--green-light:#4caf6e;--green-pale:#e8f5ed;
@@ -17,10 +14,6 @@
       --red:#c0392b;--amber:#b5720a;--mono:'Courier New',monospace;
     }
     html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:var(--text)}
-
-    /* ══════════════════════════════════════
-       LAYOUT
-    ══════════════════════════════════════ */
     .app{display:flex;height:100vh;overflow:hidden}
     .sidebar{width:190px;background:var(--sidebar);flex-shrink:0;display:flex;flex-direction:column;height:100vh}
     .sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
@@ -51,10 +44,6 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
     .card-hdr{font-size:11px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.07em;margin-bottom:13px;padding-bottom:10px;border-bottom:2px solid var(--green-pale);display:flex;align-items:center;justify-content:space-between}
-
-    /* ══════════════════════════════════════
-       FORM
-    ══════════════════════════════════════ */
     .field{margin-bottom:11px}
     .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:500}
     .field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text);font-size:13px;font-family:var(--mono);transition:border-color .12s,box-shadow .12s}
@@ -67,19 +56,11 @@
     .btn-calc:hover{background:var(--green-dark)}
     .btn-sm{padding:5px 11px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .12s}
     .btn-sm:hover{border-color:var(--green);color:var(--green-dark)}
-
-    /* ══════════════════════════════════════
-       METRICS
-    ══════════════════════════════════════ */
     .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
     .metric{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px 9px}
     .metric-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500}
     .metric-val{font-size:15px;font-weight:700;font-family:var(--mono);color:var(--text)}
     .metric-val.blue{color:var(--green-dark)}.metric-val.red{color:var(--red)}.metric-val.green{color:var(--green)}
-
-    /* ══════════════════════════════════════
-       TABLE
-    ══════════════════════════════════════ */
     .tbl-wrap{border:1px solid var(--border);border-radius:6px;max-height:300px;overflow-y:auto}
     .tbl-wrap::-webkit-scrollbar{width:5px}
     .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -93,20 +74,12 @@
     .bar-c{display:inline-block;height:5px;background:var(--green);border-radius:1px;vertical-align:middle}
     .bar-i{display:inline-block;height:5px;background:#d9534f;border-radius:1px;vertical-align:middle}
     .legend{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;margin-bottom:9px}
-
-    /* ══════════════════════════════════════
-       COMPARE
-    ══════════════════════════════════════ */
     .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .winner-tag{font-size:10px;background:var(--green-pale);color:var(--green-dark);border:1px solid var(--border2);padding:2px 8px;border-radius:4px;font-weight:600}
     .diff-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:13px}
     .diff-txt{font-size:13px;color:var(--text);line-height:1.65}
     .diff-warn{font-size:11px;color:var(--amber);margin-top:9px;padding:8px 11px;background:#fdf8ec;border:1px solid #e8d5a0;border-radius:5px;line-height:1.5}
-
-    /* ══════════════════════════════════════
-       HISTORIAL
-    ══════════════════════════════════════ */
-    .hist-item{padding:13px 0;border-bottom:1px solid var(--border);transition:background .1s}
+    .hist-item{padding:13px 0;border-bottom:1px solid var(--border)}
     .hist-item:last-child{border-bottom:none}
     .hist-main{color:var(--text);margin-bottom:3px;font-weight:600;font-size:12px}
     .hist-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:6px}
@@ -114,10 +87,7 @@
     .btn-hist-ver{padding:5px 12px;background:var(--green-pale);border:1px solid var(--border2);border-radius:4px;color:var(--green-dark);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s}
     .btn-hist-ver:hover{background:var(--green);color:#fff;border-color:var(--green)}
     .empty-state{padding:2.5rem;text-align:center;color:var(--muted);font-size:12px}
-
-    /* ══════════════════════════════════════
-       MODAL
-    ══════════════════════════════════════ */
+    /* MODAL */
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
     .modal-overlay.open{display:flex}
     .modal{background:var(--surface);border-radius:10px;width:92%;max-width:820px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
@@ -129,57 +99,37 @@
     .btn-cerrar{padding:6px 10px;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--muted);font-size:12px;cursor:pointer}
     .btn-cerrar:hover{border-color:var(--red);color:var(--red)}
     .modal-body{overflow-y:auto;padding:20px}
-
-    /* ══════════════════════════════════════
-       PRINT LAYOUT  (dentro del modal)
-    ══════════════════════════════════════ */
+    /* PRINT DOC (preview dentro del modal) */
     .print-doc{max-width:740px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-    .print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid var(--green);margin-bottom:20px}
+    .print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d8a4e;margin-bottom:20px}
     .print-brand{display:flex;align-items:center;gap:12px}
-    .print-logo-mark{width:42px;height:42px;background:var(--green);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
-    .print-brand-name{font-size:20px;font-weight:800;color:var(--green-dark);letter-spacing:.02em}
-    .print-brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .print-meta{text-align:right;font-size:11px;color:var(--muted);line-height:1.6}
-    .print-title{font-size:17px;font-weight:700;color:var(--green-dark);margin-bottom:14px}
+    .print-logo-mark{width:42px;height:42px;background:#2d8a4e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
+    .print-brand-name{font-size:20px;font-weight:800;color:#1e6638;letter-spacing:.02em}
+    .print-brand-sub{font-size:11px;color:#5c6b63;margin-top:2px}
+    .print-meta{text-align:right;font-size:11px;color:#5c6b63;line-height:1.6}
+    .print-title{font-size:17px;font-weight:700;color:#1e6638;margin-bottom:14px}
     .print-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
-    .print-metric{background:var(--green-pale);border:1px solid var(--border2);border-radius:6px;padding:11px 12px}
-    .print-metric-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
-    .print-metric-val{font-size:16px;font-weight:700;font-family:var(--mono);color:var(--green-dark)}
-    .print-metric-val.red{color:var(--red)}
-    .print-tbl-wrap{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:18px}
-    .print-tbl-wrap table{width:100%;border-collapse:collapse;font-size:11px}
-    .print-tbl-wrap th{background:var(--green-pale);padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:var(--green-dark);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border2)}
-    .print-tbl-wrap th:first-child{text-align:center;width:40px}
-    .print-tbl-wrap td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px}
-    .print-tbl-wrap td:first-child{text-align:center;color:var(--muted);font-family:sans-serif}
-    .print-tbl-wrap tr:last-child td{border-bottom:none}
-    .print-tbl-wrap tr:nth-child(even) td{background:#f9fcfa}
-    .print-footer{border-top:2px solid var(--green-pale);padding-top:12px;display:flex;align-items:center;justify-content:space-between}
+    .print-metric{background:#e8f5ed;border:1px solid #c2d9c9;border-radius:6px;padding:11px 12px}
+    .print-metric-lbl{font-size:10px;color:#5c6b63;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+    .print-metric-val{font-size:16px;font-weight:700;font-family:'Courier New',monospace;color:#1e6638}
+    .print-metric-val.red{color:#c0392b}
+    .print-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}
+    .print-tbl th{background:#e8f5ed;padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:#1e6638;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #c2d9c9;border-top:1px solid #c2d9c9}
+    .print-tbl th:first-child{text-align:center;width:40px}
+    .print-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid #d4e4d8;color:#1a1a1a;font-family:'Courier New',monospace;font-size:11px}
+    .print-tbl td:first-child{text-align:center;color:#5c6b63;font-family:sans-serif}
+    .print-tbl tr:nth-child(even) td{background:#f9fcfa}
+    .print-footer{border-top:2px solid #e8f5ed;padding-top:12px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}
     .print-footer-brand{display:flex;align-items:center;gap:8px}
-    .print-footer-logo{width:24px;height:24px;background:var(--green);border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
-    .print-footer-txt{font-size:11px;color:var(--muted)}
-    .print-footer-txt strong{color:var(--green-dark)}
-    .print-disclaimer{font-size:10px;color:var(--muted);text-align:right;line-height:1.5}
-
-    /* ══════════════════════════════════════
-       PRINT MEDIA
-    ══════════════════════════════════════ */
-    @media print{
-      body *{visibility:hidden}
-      .print-doc, .print-doc *{visibility:visible}
-      .print-doc{position:fixed;top:0;left:0;width:100%;padding:24px 32px}
-      .modal-overlay,.modal-hdr,.sidebar,.topbar{display:none!important}
-      .print-tbl-wrap{max-height:none!important;overflow:visible!important}
-      .print-tbl-wrap table{page-break-inside:auto}
-      .print-tbl-wrap tr{page-break-inside:avoid}
-    }
+    .print-footer-logo{width:24px;height:24px;background:#2d8a4e;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+    .print-footer-txt{font-size:11px;color:#5c6b63;line-height:1.5}
+    .print-footer-txt strong{color:#1e6638}
+    .print-disclaimer{font-size:10px;color:#5c6b63;text-align:right;line-height:1.5}
   </style>
 </head>
 <body>
-
 <div class="app">
-
-  <!-- ══ SIDEBAR ══ -->
+  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-wrap">
@@ -190,22 +140,16 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Herramientas</div>
-      <div class="nav-item active" onclick="showTab('calc')">
-        <i class="ti ti-calculator"></i> <span>Calcular</span>
-      </div>
-      <div class="nav-item" onclick="showTab('comp')">
-        <i class="ti ti-layout-columns"></i> <span>Comparar</span>
-      </div>
-      <div class="nav-item" onclick="showTab('hist')">
-        <i class="ti ti-history"></i> <span>Historial</span>
-      </div>
+      <div class="nav-item active" onclick="showTab('calc')"><i class="ti ti-calculator"></i> <span>Calcular</span></div>
+      <div class="nav-item" onclick="showTab('comp')"><i class="ti ti-layout-columns"></i> <span>Comparar</span></div>
+      <div class="nav-item" onclick="showTab('hist')"><i class="ti ti-history"></i> <span>Historial</span></div>
     </div>
     <div class="sidebar-footer">
       <div class="sidebar-footer-txt">Pesos UY · USD · UI<br>Sistema francés y alemán<br>Fuente: BCU Uruguay</div>
     </div>
   </div>
 
-  <!-- ══ MAIN ══ -->
+  <!-- MAIN -->
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
@@ -222,8 +166,7 @@
     </div>
 
     <div class="content">
-
-      <!-- ══ CALCULAR ══ -->
+      <!-- CALCULAR -->
       <div class="panel active" id="p-calc">
         <div class="grid2">
           <div class="card">
@@ -235,29 +178,18 @@
                 <div class="ropt" onclick="selMon(this,'UI')">UI</div>
               </div>
             </div>
-            <div class="field"><label id="lbl-monto">Monto ($ UYU)</label>
-              <input type="number" id="f-monto" value="500000" min="0" step="1000">
-            </div>
-            <div class="field"><label>Tasa nominal anual (%)</label>
-              <input type="number" id="f-tasa" value="8.5" min="0" step="0.1">
-            </div>
-            <div class="field"><label>Plazo (meses)</label>
-              <input type="number" id="f-meses" value="36" min="1" max="360">
-            </div>
+            <div class="field"><label id="lbl-monto">Monto ($ UYU)</label><input type="number" id="f-monto" value="500000" min="0" step="1000"></div>
+            <div class="field"><label>Tasa nominal anual (%)</label><input type="number" id="f-tasa" value="8.5" min="0" step="0.1"></div>
+            <div class="field"><label>Plazo (meses)</label><input type="number" id="f-meses" value="36" min="1" max="360"></div>
             <div class="field"><label>Sistema de amortización</label>
               <div class="radio-grp" id="rg-sys">
                 <div class="ropt sel" onclick="selSys(this,'frances')">Francés (cuota fija)</div>
                 <div class="ropt" onclick="selSys(this,'aleman')">Alemán (amort. fija)</div>
               </div>
             </div>
-            <div class="field"><label>Comisión de apertura (%)</label>
-              <input type="number" id="f-com" value="0" min="0" step="0.1">
-            </div>
-            <button class="btn-calc" onclick="calcular()">
-              <i class="ti ti-calculator"></i> Calcular amortización
-            </button>
+            <div class="field"><label>Comisión de apertura (%)</label><input type="number" id="f-com" value="0" min="0" step="0.1"></div>
+            <button class="btn-calc" onclick="calcular()"><i class="ti ti-calculator"></i> Calcular amortización</button>
           </div>
-
           <div class="card">
             <div class="card-hdr">
               <span>Resumen</span>
@@ -282,7 +214,7 @@
         </div>
       </div>
 
-      <!-- ══ COMPARAR ══ -->
+      <!-- COMPARAR -->
       <div class="panel" id="p-comp">
         <div class="compare-grid">
           <div class="card">
@@ -327,178 +259,129 @@
           </div>
         </div>
         <div style="text-align:center;margin:14px 0">
-          <button class="btn-calc" style="width:auto;padding:10px 36px" onclick="comparar()">
-            <i class="ti ti-arrows-exchange"></i> Comparar préstamos
-          </button>
+          <button class="btn-calc" style="width:auto;padding:10px 36px" onclick="comparar()"><i class="ti ti-arrows-exchange"></i> Comparar préstamos</button>
         </div>
         <div id="comp-result"></div>
       </div>
 
-      <!-- ══ HISTORIAL ══ -->
+      <!-- HISTORIAL -->
       <div class="panel" id="p-hist">
         <div class="card">
           <div class="card-hdr">
             <span>Simulaciones guardadas</span>
             <button class="btn-sm" onclick="limpiarHist()"><i class="ti ti-trash"></i> Limpiar todo</button>
           </div>
-          <div id="hist-list">
-            <div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin simulaciones guardadas aún</div>
-          </div>
+          <div id="hist-list"><div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin simulaciones guardadas aún</div></div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- ══ MODAL: VER AMORTIZACIÓN ══ -->
+<!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="cerrarModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-hdr">
       <div class="modal-title"><i class="ti ti-table"></i> Cuadro de amortización</div>
       <div class="modal-hdr-actions">
-        <button class="btn-imprimir" onclick="imprimirPDF()">
-          <i class="ti ti-printer"></i> Imprimir / Guardar PDF
-        </button>
+        <button class="btn-imprimir" onclick="imprimirPDF()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
         <button class="btn-cerrar" onclick="cerrarModal()"><i class="ti ti-x"></i> Cerrar</button>
       </div>
     </div>
     <div class="modal-body">
-      <div class="print-doc" id="print-doc">
-        <!-- Se llena dinámicamente -->
-      </div>
+      <div class="print-doc" id="print-doc"></div>
     </div>
   </div>
 </div>
 
 <script>
-/* ══════════════════════════════════════
-   ESTADO GLOBAL
-══════════════════════════════════════ */
-var state = { mon:'UYU', sys:'frances', cotiz:{usd:43.5,ui:6.28,eur:47} };
-var cmp   = { ca:{mon:'UYU',sys:'frances'}, cb:{mon:'UYU',sys:'frances'} };
+var state={mon:'UYU',sys:'frances',cotiz:{usd:43.5,ui:6.28,eur:47}};
+var cmp={ca:{mon:'UYU',sys:'frances'},cb:{mon:'UYU',sys:'frances'}};
+var _simActual=null;
 
-/* ══════════════════════════════════════
-   NAVEGACIÓN
-══════════════════════════════════════ */
-function showTab(t) {
+function showTab(t){
   ['calc','comp','hist'].forEach(function(x,i){
-    document.querySelectorAll('.nav-item')[i].classList.toggle('active', x===t);
-    document.getElementById('p-'+x).classList.toggle('active', x===t);
+    document.querySelectorAll('.nav-item')[i].classList.toggle('active',x===t);
+    document.getElementById('p-'+x).classList.toggle('active',x===t);
   });
-  if (t==='hist') renderHist();
+  if(t==='hist') renderHist();
 }
+function selMon(el,v){sel('#rg-mon',el);state.mon=v;document.getElementById('lbl-monto').textContent='Monto ('+mlbl(v)+')';}
+function selSys(el,v){sel('#rg-sys',el);state.sys=v;}
+function selCompMon(el,g,v){sel('#rg-'+g,el);cmp[g].mon=v;document.getElementById(g+'-lbl').textContent='Monto ('+mlbl(v)+')';}
+function selCompSys(el,g,v){sel('#rg-'+g,el);cmp[g].sys=v;}
+function sel(grp,el){document.querySelectorAll(grp+' .ropt').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');}
+function mlbl(m){return m==='UYU'?'$ UYU':m==='USD'?'USD':'UI';}
 
-/* ══════════════════════════════════════
-   RADIO GROUPS
-══════════════════════════════════════ */
-function selMon(el,v){ sel('#rg-mon',el); state.mon=v; document.getElementById('lbl-monto').textContent='Monto ('+mlbl(v)+')'; }
-function selSys(el,v){ sel('#rg-sys',el); state.sys=v; }
-function selCompMon(el,g,v){ sel('#rg-'+g,el); cmp[g].mon=v; document.getElementById(g+'-lbl').textContent='Monto ('+mlbl(v)+')'; }
-function selCompSys(el,g,v){ sel('#rg-'+g,el); cmp[g].sys=v; }
-function sel(grp,el){ document.querySelectorAll(grp+' .ropt').forEach(function(x){x.classList.remove('sel');}); el.classList.add('sel'); }
-function mlbl(m){ return m==='UYU'?'$ UYU': m==='USD'?'USD':'UI'; }
-
-/* ══════════════════════════════════════
-   FORMATO
-══════════════════════════════════════ */
 function fmt(n,m){
   if(!m||m==='UYU') return '$\u00a0'+Math.round(n).toLocaleString('es-UY');
-  if(m==='USD')     return 'U$S\u00a0'+n.toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(m==='USD') return 'U$S\u00a0'+n.toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
   return n.toLocaleString('es-UY',{minimumFractionDigits:4,maximumFractionDigits:4})+'\u00a0UI';
 }
 
-/* ══════════════════════════════════════
-   AMORTIZACIÓN
-══════════════════════════════════════ */
 function calcAmort(P,tna,n,sys){
-  var tm=tna/100/12, rows=[], saldo=P;
-  var cf = tm>0 ? P*(tm*Math.pow(1+tm,n))/(Math.pow(1+tm,n)-1) : P/n;
+  var tm=tna/100/12,rows=[],saldo=P;
+  var cf=tm>0?P*(tm*Math.pow(1+tm,n))/(Math.pow(1+tm,n)-1):P/n;
   for(var i=1;i<=n;i++){
-    var interes=saldo*tm, cap, cuota;
-    if(sys==='frances'){ cuota=cf; cap=cuota-interes; }
-    else { cap=P/n; cuota=cap+interes; }
-    saldo-=cap; if(saldo<0.005)saldo=0;
+    var interes=saldo*tm,cap,cuota;
+    if(sys==='frances'){cuota=cf;cap=cuota-interes;}
+    else{cap=P/n;cuota=cap+interes;}
+    saldo-=cap;if(saldo<0.005)saldo=0;
     rows.push({n:i,cuota:cuota,cap:cap,int:interes,saldo:saldo});
   }
   return rows;
 }
 
-/* ══════════════════════════════════════
-   TIR
-══════════════════════════════════════ */
 function calcTIR(P,fl){
   var r=0.01;
   for(var i=0;i<200;i++){
     var f=fl.reduce(function(s,c,j){return s+c/Math.pow(1+r,j+1);},0)-P;
     var d=fl.reduce(function(s,c,j){return s-(j+1)*c/Math.pow(1+r,j+2);},0);
     if(!d) break;
-    var nr=r-f/d; if(Math.abs(nr-r)<1e-8){r=nr;break;} r=nr;
+    var nr=r-f/d;if(Math.abs(nr-r)<1e-8){r=nr;break;}r=nr;
   }
   return r*12*100;
 }
 
-/* ══════════════════════════════════════
-   CALCULAR PRINCIPAL
-══════════════════════════════════════ */
 function calcular(){
-  var P   = parseFloat(document.getElementById('f-monto').value)||0;
-  var tna = parseFloat(document.getElementById('f-tasa').value)||0;
-  var n   = parseInt(document.getElementById('f-meses').value)||0;
-  var com = parseFloat(document.getElementById('f-com').value)||0;
-  if(!P||!n){alert('Completá el monto y el plazo.'); return;}
-  var rows = calcAmort(P,tna,n,state.sys);
-  var totP = rows.reduce(function(s,r){return s+r.cuota;},0);
-  var totI = rows.reduce(function(s,r){return s+r.int;},0);
-  var tir  = calcTIR(P*(1-com/100), rows.map(function(r){return r.cuota;}));
-  var usdEq = state.mon==='USD'?P: state.mon==='UI'?P*state.cotiz.ui/state.cotiz.usd: P/state.cotiz.usd;
-  document.getElementById('m-cuota').textContent = fmt(rows[0].cuota,state.mon);
-  document.getElementById('m-total').textContent = fmt(totP,state.mon);
-  document.getElementById('m-int').textContent   = fmt(totI,state.mon);
-  document.getElementById('m-tir').textContent   = tir.toFixed(2)+'% anual';
-  document.getElementById('m-ult').textContent   = fmt(rows[rows.length-1].cuota,state.mon);
-  document.getElementById('m-usd').textContent   = 'U$S '+Math.round(usdEq).toLocaleString('es-UY');
-  document.getElementById('tbl-wrap').innerHTML  = buildTableHTML(rows,state.mon);
-  window._lastSim = {P,tna,n,sys:state.sys,mon:state.mon,com,cuota:rows[0].cuota,total:totP,int:totI,tir,rows,ts:new Date().toLocaleString('es-UY')};
+  var P=parseFloat(document.getElementById('f-monto').value)||0;
+  var tna=parseFloat(document.getElementById('f-tasa').value)||0;
+  var n=parseInt(document.getElementById('f-meses').value)||0;
+  var com=parseFloat(document.getElementById('f-com').value)||0;
+  if(!P||!n){alert('Completá el monto y el plazo.');return;}
+  var rows=calcAmort(P,tna,n,state.sys);
+  var totP=rows.reduce(function(s,r){return s+r.cuota;},0);
+  var totI=rows.reduce(function(s,r){return s+r.int;},0);
+  var tir=calcTIR(P*(1-com/100),rows.map(function(r){return r.cuota;}));
+  var usdEq=state.mon==='USD'?P:state.mon==='UI'?P*state.cotiz.ui/state.cotiz.usd:P/state.cotiz.usd;
+  document.getElementById('m-cuota').textContent=fmt(rows[0].cuota,state.mon);
+  document.getElementById('m-total').textContent=fmt(totP,state.mon);
+  document.getElementById('m-int').textContent=fmt(totI,state.mon);
+  document.getElementById('m-tir').textContent=tir.toFixed(2)+'% anual';
+  document.getElementById('m-ult').textContent=fmt(rows[rows.length-1].cuota,state.mon);
+  document.getElementById('m-usd').textContent='U$S '+Math.round(usdEq).toLocaleString('es-UY');
+  var h='<table><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th><th style="width:76px">Dist.</th></tr></thead><tbody>';
+  rows.forEach(function(r){var pct=r.cap/r.cuota;h+='<tr><td>'+r.n+'</td><td>'+fmt(r.cuota,state.mon)+'</td><td>'+fmt(r.cap,state.mon)+'</td><td>'+fmt(r.int,state.mon)+'</td><td>'+fmt(r.saldo,state.mon)+'</td><td><span class="bar-c" style="width:'+(pct*54).toFixed(0)+'px"></span><span class="bar-i" style="width:'+((1-pct)*54).toFixed(0)+'px"></span></td></tr>';});
+  h+='</tbody></table>';
+  document.getElementById('tbl-wrap').innerHTML=h;
+  window._lastSim={P:P,tna:tna,n:n,sys:state.sys,mon:state.mon,com:com,cuota:rows[0].cuota,total:totP,int:totI,tir:tir,ts:new Date().toLocaleString('es-UY')};
 }
 
-/* ══════════════════════════════════════
-   BUILD TABLE HTML (reutilizable)
-══════════════════════════════════════ */
-function buildTableHTML(rows,mon){
-  var h = '<table><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th><th style="width:76px">Dist.</th></tr></thead><tbody>';
-  rows.forEach(function(r){
-    var pct=r.cap/r.cuota;
-    h+='<tr><td>'+r.n+'</td><td>'+fmt(r.cuota,mon)+'</td><td>'+fmt(r.cap,mon)+'</td><td>'+fmt(r.int,mon)+'</td><td>'+fmt(r.saldo,mon)+'</td>'
-      +'<td><span class="bar-c" style="width:'+(pct*54).toFixed(0)+'px"></span><span class="bar-i" style="width:'+((1-pct)*54).toFixed(0)+'px"></span></td></tr>';
-  });
-  return h+'</tbody></table>';
-}
-
-/* ══════════════════════════════════════
-   GUARDAR SIMULACIÓN
-══════════════════════════════════════ */
 function guardarSim(event){
-  if(!window._lastSim){alert('Calculá primero.'); return;}
+  if(!window._lastSim){alert('Calculá primero.');return;}
   var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
   sims.unshift(Object.assign({},window._lastSim));
   sims=sims.slice(0,30);
   localStorage.setItem('abg-sims',JSON.stringify(sims));
-  var btn=event.currentTarget, orig=btn.innerHTML;
-  btn.textContent='✓ Guardado'; btn.style.color='var(--green)';
+  var btn=event.currentTarget,orig=btn.innerHTML;
+  btn.textContent='✓ Guardado';btn.style.color='var(--green)';
   setTimeout(function(){btn.innerHTML=orig;btn.style.color='';},1600);
 }
 
-/* ══════════════════════════════════════
-   HISTORIAL
-══════════════════════════════════════ */
 function renderHist(){
   var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
   var el=document.getElementById('hist-list');
-  if(!sims.length){
-    el.innerHTML='<div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin simulaciones guardadas aún</div>';
-    return;
-  }
+  if(!sims.length){el.innerHTML='<div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin simulaciones guardadas aún</div>';return;}
   el.innerHTML=sims.map(function(s,i){
     return '<div class="hist-item">'
       +'<div class="hist-main">'+fmt(s.P,s.mon)+' · '+s.tna+'% anual · '+s.n+' meses · '+s.sys+'</div>'
@@ -506,106 +389,114 @@ function renderHist(){
       +'<div class="hist-actions">'
         +'<button class="btn-hist-ver" onclick="verSimulacion('+i+')"><i class="ti ti-table"></i> Ver amortización</button>'
         +'<button class="btn-sm" onclick="eliminarSim('+i+')"><i class="ti ti-trash"></i> Eliminar</button>'
-      +'</div>'
-      +'</div>';
+      +'</div></div>';
   }).join('');
 }
 
 function eliminarSim(i){
   var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
-  sims.splice(i,1);
-  localStorage.setItem('abg-sims',JSON.stringify(sims));
-  renderHist();
+  sims.splice(i,1);localStorage.setItem('abg-sims',JSON.stringify(sims));renderHist();
 }
 
-function limpiarHist(){
-  if(confirm('¿Borrar todo el historial?')){localStorage.removeItem('abg-sims'); renderHist();}
-}
+function limpiarHist(){if(confirm('¿Borrar todo el historial?')){localStorage.removeItem('abg-sims');renderHist();}}
 
-/* ══════════════════════════════════════
-   VER SIMULACIÓN EN MODAL
-══════════════════════════════════════ */
-function verSimulacion(i){
-  var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
-  var s=sims[i];
-  // Recalcular rows (no se guardan por peso)
+function buildPrintHTML(s){
   var rows=calcAmort(s.P,s.tna,s.n,s.sys);
   var totP=rows.reduce(function(a,r){return a+r.cuota;},0);
   var totI=rows.reduce(function(a,r){return a+r.int;},0);
   var now=new Date().toLocaleDateString('es-UY',{year:'numeric',month:'long',day:'numeric'});
-  var sistemaLabel=s.sys==='frances'?'Sistema francés — cuota fija':'Sistema alemán — amortización fija';
-  var monLabel=s.mon==='UYU'?'Pesos uruguayos (UYU)': s.mon==='USD'?'Dólares (USD)':'Unidades Indexadas (UI)';
-
-  var html=
-    '<div class="print-header">'
-      +'<div class="print-brand">'
-        +'<div class="print-logo-mark">A</div>'
-        +'<div><div class="print-brand-name">ABORGAMA</div><div class="print-brand-sub">Gestión ambiental integral</div></div>'
-      +'</div>'
-      +'<div class="print-meta">'
-        +'<div>Simulación de préstamo</div>'
-        +'<div>Generado: '+now+'</div>'
-        +'<div>www.aborgama.com</div>'
-      +'</div>'
-    +'</div>'
-
-    +'<div class="print-title">Cuadro de amortización</div>'
-
-    +'<div class="print-metrics">'
-      +'<div class="print-metric"><div class="print-metric-lbl">Monto</div><div class="print-metric-val">'+fmt(s.P,s.mon)+'</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Moneda</div><div class="print-metric-val" style="font-size:12px;font-family:sans-serif">'+monLabel+'</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Tasa nominal anual</div><div class="print-metric-val">'+s.tna+'%</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Plazo</div><div class="print-metric-val">'+s.n+' meses</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Sistema</div><div class="print-metric-val" style="font-size:11px;font-family:sans-serif">'+sistemaLabel+'</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">TIR anual</div><div class="print-metric-val">'+s.tir.toFixed(2)+'%</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Cuota inicial</div><div class="print-metric-val">'+fmt(s.cuota,s.mon)+'</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Total a pagar</div><div class="print-metric-val">'+fmt(totP,s.mon)+'</div></div>'
-      +'<div class="print-metric"><div class="print-metric-lbl">Total intereses</div><div class="print-metric-val red">'+fmt(totI,s.mon)+'</div></div>'
-    +'</div>'
-
-    +'<div class="print-tbl-wrap">'
-      +'<table><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>';
-
+  var sistLbl=s.sys==='frances'?'Sistema francés — cuota fija':'Sistema alemán — amortización fija';
+  var monLbl=s.mon==='UYU'?'Pesos uruguayos (UYU)':s.mon==='USD'?'Dólares (USD)':'Unidades Indexadas (UI)';
+  var filas='';
   rows.forEach(function(r){
-    html+='<tr><td>'+r.n+'</td><td>'+fmt(r.cuota,s.mon)+'</td><td>'+fmt(r.cap,s.mon)+'</td><td>'+fmt(r.int,s.mon)+'</td><td>'+fmt(r.saldo,s.mon)+'</td></tr>';
+    filas+='<tr><td>'+r.n+'</td><td>'+fmt(r.cuota,s.mon)+'</td><td>'+fmt(r.cap,s.mon)+'</td><td>'+fmt(r.int,s.mon)+'</td><td>'+fmt(r.saldo,s.mon)+'</td></tr>';
   });
-
-  html+='</tbody></table></div>'
-
+  return '<div class="print-header">'
+    +'<div class="print-brand"><div class="print-logo-mark">A</div>'
+    +'<div><div class="print-brand-name">ABORGAMA</div><div class="print-brand-sub">Gestión ambiental integral</div></div></div>'
+    +'<div class="print-meta"><div>Simulación de préstamo</div><div>Generado: '+now+'</div><div>www.aborgama.com</div></div>'
+    +'</div>'
+    +'<div class="print-title">Cuadro de amortización</div>'
+    +'<div class="print-metrics">'
+    +'<div class="print-metric"><div class="print-metric-lbl">Monto</div><div class="print-metric-val">'+fmt(s.P,s.mon)+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Moneda</div><div class="print-metric-val" style="font-size:12px;font-family:sans-serif">'+monLbl+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Tasa nominal anual</div><div class="print-metric-val">'+s.tna+'%</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Plazo</div><div class="print-metric-val">'+s.n+' meses</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Sistema</div><div class="print-metric-val" style="font-size:11px;font-family:sans-serif">'+sistLbl+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">TIR anual</div><div class="print-metric-val">'+s.tir.toFixed(2)+'%</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Cuota inicial</div><div class="print-metric-val">'+fmt(s.cuota,s.mon)+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Total a pagar</div><div class="print-metric-val">'+fmt(totP,s.mon)+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Total intereses</div><div class="print-metric-val red">'+fmt(totI,s.mon)+'</div></div>'
+    +'</div>'
+    +'<table class="print-tbl"><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>'+filas+'</tbody></table>'
     +'<div class="print-footer">'
-      +'<div class="print-footer-brand">'
-        +'<div class="print-footer-logo">A</div>'
-        +'<div class="print-footer-txt"><strong>ABORGAMA</strong> · Gestión ambiental integral<br>© '+new Date().getFullYear()+' Aborgama · www.aborgama.com</div>'
-      +'</div>'
-      +'<div class="print-disclaimer">Este documento es una simulación financiera.<br>No constituye oferta de crédito. Cotización BCU al momento del cálculo.</div>'
+    +'<div class="print-footer-brand"><div class="print-footer-logo">A</div>'
+    +'<div class="print-footer-txt"><strong>ABORGAMA</strong> · Gestión ambiental integral<br>© '+new Date().getFullYear()+' Aborgama · www.aborgama.com</div></div>'
+    +'<div class="print-disclaimer">Este documento es una simulación financiera.<br>No constituye oferta de crédito. TC BCU al momento del cálculo.</div>'
     +'</div>';
+}
 
-  document.getElementById('print-doc').innerHTML=html;
+function verSimulacion(i){
+  var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
+  _simActual=sims[i];
+  document.getElementById('print-doc').innerHTML=buildPrintHTML(_simActual);
   document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
 
 function cerrarModal(event){
-  if(event && event.target!==document.getElementById('modal-overlay')) return;
+  if(event&&event.target!==document.getElementById('modal-overlay'))return;
   document.getElementById('modal-overlay').classList.remove('open');
   document.body.style.overflow='';
 }
 
 function imprimirPDF(){
-  window.print();
+  if(!_simActual) return;
+  var s=_simActual;
+  var contenido=buildPrintHTML(s);
+  var ventana=window.open('','_blank','width=900,height=700');
+  ventana.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aborgama — Amortización</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;color:#1a1a1a;padding:32px 40px;background:#fff}'
+    +'.print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d8a4e;margin-bottom:20px}'
+    +'.print-brand{display:flex;align-items:center;gap:12px}'
+    +'.print-logo-mark{width:42px;height:42px;background:#2d8a4e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}'
+    +'.print-brand-name{font-size:20px;font-weight:800;color:#1e6638;letter-spacing:.02em}'
+    +'.print-brand-sub{font-size:11px;color:#5c6b63;margin-top:2px}'
+    +'.print-meta{text-align:right;font-size:11px;color:#5c6b63;line-height:1.6}'
+    +'.print-title{font-size:17px;font-weight:700;color:#1e6638;margin-bottom:14px}'
+    +'.print-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}'
+    +'.print-metric{background:#e8f5ed;border:1px solid #c2d9c9;border-radius:6px;padding:11px 12px}'
+    +'.print-metric-lbl{font-size:10px;color:#5c6b63;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}'
+    +'.print-metric-val{font-size:16px;font-weight:700;font-family:"Courier New",monospace;color:#1e6638}'
+    +'.print-metric-val.red{color:#c0392b}'
+    +'.print-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}'
+    +'.print-tbl th{background:#e8f5ed;padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:#1e6638;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #c2d9c9;border-top:1px solid #c2d9c9}'
+    +'.print-tbl th:first-child{text-align:center;width:40px}'
+    +'.print-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid #d4e4d8;color:#1a1a1a;font-family:"Courier New",monospace;font-size:11px}'
+    +'.print-tbl td:first-child{text-align:center;color:#5c6b63;font-family:sans-serif}'
+    +'.print-tbl tr:nth-child(even) td{background:#f9fcfa}'
+    +'.print-footer{border-top:2px solid #e8f5ed;padding-top:12px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}'
+    +'.print-footer-brand{display:flex;align-items:center;gap:8px}'
+    +'.print-footer-logo{width:24px;height:24px;background:#2d8a4e;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}'
+    +'.print-footer-txt{font-size:11px;color:#5c6b63;line-height:1.5}'
+    +'.print-footer-txt strong{color:#1e6638}'
+    +'.print-disclaimer{font-size:10px;color:#5c6b63;text-align:right;line-height:1.5}'
+    +'@media print{body{padding:16px 20px}}'
+    +'</style></head><body>'+contenido+'</body></html>');
+  ventana.document.close();
+  ventana.focus();
+  setTimeout(function(){ventana.print();},600);
 }
 
-/* ══════════════════════════════════════
-   COMPARAR
-══════════════════════════════════════ */
-function toUYU(v,m){ return m==='UYU'?v: m==='USD'?v*state.cotiz.usd: v*state.cotiz.ui; }
+function toUYU(v,m){return m==='UYU'?v:m==='USD'?v*state.cotiz.usd:v*state.cotiz.ui;}
 
 function comparar(){
   var dA={P:parseFloat(document.getElementById('ca-m').value)||0,tna:parseFloat(document.getElementById('ca-t').value)||0,n:parseInt(document.getElementById('ca-p').value)||0,com:parseFloat(document.getElementById('ca-com').value)||0,sys:cmp.ca.sys,mon:cmp.ca.mon};
   var dB={P:parseFloat(document.getElementById('cb-m').value)||0,tna:parseFloat(document.getElementById('cb-t').value)||0,n:parseInt(document.getElementById('cb-p').value)||0,com:parseFloat(document.getElementById('cb-com').value)||0,sys:cmp.cb.sys,mon:cmp.cb.mon};
-  if(!dA.P||!dA.n||!dB.P||!dB.n){alert('Completá ambos préstamos.'); return;}
-  var rA=calcAmort(dA.P,dA.tna,dA.n,dA.sys), rB=calcAmort(dB.P,dB.tna,dB.n,dB.sys);
-  var intA=rA.reduce(function(s,r){return s+r.int;},0), intB=rB.reduce(function(s,r){return s+r.int;},0);
+  if(!dA.P||!dA.n||!dB.P||!dB.n){alert('Completá ambos préstamos.');return;}
+  var rA=calcAmort(dA.P,dA.tna,dA.n,dA.sys),rB=calcAmort(dB.P,dB.tna,dB.n,dB.sys);
+  var intA=rA.reduce(function(s,r){return s+r.int;},0),intB=rB.reduce(function(s,r){return s+r.int;},0);
   var tirA=calcTIR(dA.P*(1-dA.com/100),rA.map(function(r){return r.cuota;}));
   var tirB=calcTIR(dB.P*(1-dB.com/100),rB.map(function(r){return r.cuota;}));
   var win=toUYU(intA,dA.mon)<=toUYU(intB,dB.mon)?'A':'B';
@@ -623,18 +514,14 @@ function comparar(){
       '<div style="font-size:11px;color:var(--muted);margin-top:4px">Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,d.mon),'UYU')+'</strong></div>'+
     '</div>';
   });
-  html+='</div>'
-    +'<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'
-    +'<div class="diff-txt">El préstamo <strong>'+win+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'
-    +'<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Comparación al TC del BCU al momento del cálculo. Si el dólar sube, el costo real del préstamo en USD aumenta proporcionalmente.</div></div>';
+  html+='</div><div class="diff-box"><div class="card-hdr">Diferencia neta</div>'+
+    '<div class="diff-txt">El préstamo <strong>'+win+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'+
+    '<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Comparación al TC del BCU al momento del cálculo. Si el dólar sube, el costo real del préstamo en USD aumenta proporcionalmente.</div></div>';
   document.getElementById('comp-result').innerHTML=html;
 }
 
-/* ══════════════════════════════════════
-   COTIZACIONES BCU
-══════════════════════════════════════ */
 async function cargarCotiz(){
-  var proxy='https://corsproxy.io/?url=', enc=encodeURIComponent;
+  var proxy='https://corsproxy.io/?url=',enc=encodeURIComponent;
   try{
     var r=await Promise.all([
       fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=2222&cant=1')).then(function(x){return x.text();}),
@@ -652,8 +539,8 @@ async function cargarCotiz(){
       document.getElementById('c-eur').textContent=eur?'$'+eur.toFixed(2):'—';
       document.getElementById('sdot').className='status-dot ok';
       document.getElementById('cotiz-status').textContent='BCU actualizado';
-    } else { throw new Error(); }
-  } catch(e){
+    }else{throw new Error();}
+  }catch(e){
     document.getElementById('sdot').className='status-dot err';
     document.getElementById('cotiz-status').textContent='Sin conexión BCU — valores de referencia';
     document.getElementById('c-usd-c').textContent='$43.20';
@@ -664,8 +551,6 @@ async function cargarCotiz(){
     state.cotiz={usd:43.8,ui:6.28,eur:47.2};
   }
 }
-
-// ── INIT ──
 cargarCotiz();
 </script>
 </body>

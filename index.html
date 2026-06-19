@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aborgama — Calculadora de Préstamos</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -349,6 +350,7 @@ tr:last-child td{border-bottom:none}
       <div class="modal-title"><i class="ti ti-table"></i> Cuadro de amortización</div>
       <div class="modal-hdr-actions">
         <button class="btn-imprimir" onclick="imprimirPDF()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+        <button class="btn-imprimir" style="background:var(--green-dark)" onclick="descargarExcel()"><i class="ti ti-file-spreadsheet"></i> Descargar Excel</button>
         <button class="btn-cerrar" onclick="cerrarModal()"><i class="ti ti-x"></i> Cerrar</button>
       </div>
     </div>
@@ -782,6 +784,71 @@ function imprimirPDF(){
     +'@media print{body{padding:16px 20px}}</style></head><body>'+contenido+'</body></html>');
   v.document.close(); v.focus();
   setTimeout(function(){v.print();},600);
+}
+
+/* ══════════════════════════════════════
+   DESCARGAR EXCEL (.xlsx) — datos crudos
+══════════════════════════════════════ */
+function descargarExcel(){
+  if(!_simModal) return;
+  var s = _simModal;
+  var rows = calcAmortTramos(s.monto, s.tramos);
+
+  // Hoja 1: cuadro de amortización completo, fila por mes
+  var dataAmort = rows.map(function(r){
+    return {
+      'Mes': r.n,
+      'Período': r.gracia ? 'Gracia' : 'Amortización',
+      'Cuota': r.gracia ? 0 : Math.round(r.cuota*100)/100,
+      'Capital': Math.round(r.cap*100)/100,
+      'Interés': Math.round(r.int*100)/100,
+      'Saldo': Math.round(r.saldo*100)/100
+    };
+  });
+
+  // Hoja 2: resumen y estructura de tramos
+  var totP = rows.reduce(function(a,r){return a+r.cuota;},0);
+  var totI = rows.reduce(function(a,r){return a+r.int;},0);
+  var monLbl = s.moneda==='UYU'?'Pesos uruguayos (UYU)': s.moneda==='USD'?'Dólares (USD)':'Unidades Indexadas (UI)';
+  var dataResumen = [
+    {Campo:'Nombre del escenario', Valor:s.nombre},
+    {Campo:'Monto inicial', Valor:s.monto},
+    {Campo:'Moneda', Valor:monLbl},
+    {Campo:'Plazo total (meses)', Valor:s.meses},
+    {Campo:'TIR anual (%)', Valor:Math.round(s.tir*100)/100},
+    {Campo:'Total a pagar', Valor:Math.round(totP*100)/100},
+    {Campo:'Total intereses', Valor:Math.round(totI*100)/100},
+    {Campo:'', Valor:''},
+    {Campo:'Generado', Valor:new Date().toLocaleString('es-UY')},
+    {Campo:'Fuente', Valor:'Aborgama — www.aborgama.com'}
+  ];
+
+  // Hoja 3: detalle de tramos configurados
+  var dataTramos = s.tramos.map(function(t,i){
+    return {
+      'Tramo': i+1,
+      'Meses': t.meses,
+      'Tasa nominal anual (%)': t.tasa,
+      'Sistema': t.gracia ? '—' : (t.sistema==='frances'?'Francés':'Alemán'),
+      'Período de gracia': t.gracia ? 'Sí (capitaliza interés)' : 'No'
+    };
+  });
+
+  var wb = XLSX.utils.book_new();
+  var wsResumen = XLSX.utils.json_to_sheet(dataResumen, {skipHeader:false});
+  wsResumen['!cols'] = [{wch:22},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+  var wsTramos = XLSX.utils.json_to_sheet(dataTramos);
+  wsTramos['!cols'] = [{wch:8},{wch:8},{wch:18},{wch:12},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, wsTramos, 'Tramos');
+
+  var wsAmort = XLSX.utils.json_to_sheet(dataAmort);
+  wsAmort['!cols'] = [{wch:6},{wch:14},{wch:16},{wch:16},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsAmort, 'Amortización');
+
+  var nombreArchivo = 'Aborgama_' + s.nombre.replace(/[^a-zA-Z0-9]/g,'_') + '.xlsx';
+  XLSX.writeFile(wb, nombreArchivo);
 }
 
 /* ══════════════════════════════════════

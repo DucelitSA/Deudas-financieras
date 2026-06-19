@@ -769,6 +769,63 @@ function imprimirPDF(){
 /* ══════════════════════════════════════
    COMPARADOR DE ESCENARIOS (Firestore)
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   SENSIBILIDAD POR DEVALUACIÓN PROYECTADA
+══════════════════════════════════════ */
+function calcularSerieUSD(s, devalAnualPct, tcInicial){
+  var rows = calcAmortTramos(s.monto, s.tramos);
+  var devalMensual = Math.pow(1 + devalAnualPct/100, 1/12) - 1;
+  var totalUSD = 0;
+  rows.forEach(function(r, idx){
+    var tcMes = tcInicial * Math.pow(1 + devalMensual, idx+1);
+    var pagoEnUSD = s.moneda === 'USD' ? r.cuota : r.cuota / tcMes;
+    totalUSD += pagoEnUSD;
+  });
+  return totalUSD;
+}
+
+window._devalCustom = [0, 6, 10];
+
+function renderSensibilidad(sA, sB){
+  var tc0 = state.cotiz.usd;
+  var html = '<div class="diff-box" style="margin-top:14px">'
+    +'<div class="card-hdr">Sensibilidad: costo real en USD según devaluación proyectada'
+    +'<button class="btn-sm" onclick="editarSupuestosDeval()"><i class="ti ti-settings"></i> Editar supuestos</button>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:12px">TC de referencia hoy: $'+tc0.toFixed(2)+'. Cada escenario aplica esa devaluación anual de forma compuesta, mes a mes, sobre cada cuota antes de convertirla a dólares.</div>'
+    +'<div id="sens-tabla"></div>'
+    +'</div>';
+  document.getElementById('comp-result').innerHTML += html;
+  pintarTablaSensibilidad(sA, sB, tc0);
+}
+
+function pintarTablaSensibilidad(sA, sB, tc0){
+  var rowsHtml = window._devalCustom.map(function(val){
+    var totalA_USD = calcularSerieUSD(sA, val, tc0);
+    var totalB_USD = calcularSerieUSD(sB, val, tc0);
+    var ganador = totalA_USD <= totalB_USD ? sA.nombre : sB.nombre;
+    var diff = Math.abs(totalA_USD - totalB_USD);
+    return '<tr>'
+      +'<td style="text-align:left">'+val+'% anual</td>'
+      +'<td>U$S '+Math.round(totalA_USD).toLocaleString('es-UY')+'</td>'
+      +'<td>U$S '+Math.round(totalB_USD).toLocaleString('es-UY')+'</td>'
+      +'<td style="text-align:left;color:var(--green-dark);font-weight:600">'+ganador+'</td>'
+      +'<td>U$S '+Math.round(diff).toLocaleString('es-UY')+'</td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('sens-tabla').innerHTML =
+    '<table><thead><tr><th style="text-align:left">Devaluación</th><th>'+sA.nombre+' (USD real)</th><th>'+sB.nombre+' (USD real)</th><th style="text-align:left">Más barato</th><th>Diferencia</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>';
+}
+
+function editarSupuestosDeval(){
+  var nuevos = prompt('Ingresá 3 tasas de devaluación anual separadas por coma (ej: 0,6,10):', window._devalCustom.join(','));
+  if(!nuevos) return;
+  var arr = nuevos.split(',').map(function(x){return parseFloat(x.trim())||0;});
+  if(arr.length!==3){ alert('Necesito exactamente 3 valores.'); return; }
+  window._devalCustom = arr;
+  compararEscenarios();
+}
+
 function cargarEscenariosParaComparar(){
   var selA = document.getElementById('sel-esc-a');
   var selB = document.getElementById('sel-esc-b');
@@ -828,18 +885,37 @@ function compararEscenarios(){
     +'<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Esta comparación es ideal para ver el costo real de "cumplir el KPI" vs "no cumplirlo": el período de gracia capitaliza intereses sobre el capital antes de empezar a amortizar, así que dos tramos con la misma tasa pueden salir distinto si la gracia o el orden de los tramos cambia.</div></div>';
 
   document.getElementById('comp-result').innerHTML = html;
+  renderSensibilidad(sA, sB);
 }
 
 /* ══════════════════════════════════════
    COTIZACIONES BCU
 ══════════════════════════════════════ */
+async function fetchConProxies(urlDestino){
+  var enc = encodeURIComponent;
+  var proxies = [
+    'https://api.allorigins.win/raw?url=' + enc(urlDestino),
+    'https://corsproxy.io/?url=' + enc(urlDestino),
+    'https://thingproxy.freeboard.io/fetch/' + urlDestino
+  ];
+  for (var i=0; i<proxies.length; i++){
+    try{
+      var resp = await fetch(proxies[i]);
+      if (resp.ok) {
+        var txt = await resp.text();
+        if (txt && txt.indexOf('<') !== -1) return txt;
+      }
+    }catch(e){ /* probar el siguiente proxy */ }
+  }
+  throw new Error('Todos los proxies fallaron');
+}
+
 async function cargarCotiz(){
-  var proxy='https://corsproxy.io/?url=', enc=encodeURIComponent;
   try{
     var r = await Promise.all([
-      fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=2222&cant=1')).then(function(x){return x.text();}),
-      fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=9800&cant=1')).then(function(x){return x.text();}),
-      fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=1111&cant=1')).then(function(x){return x.text();})
+      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=2222&cant=1'),
+      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=9800&cant=1'),
+      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=1111&cant=1')
     ]);
     var pv = function(xml,tag){ var m=xml.match(new RegExp('<'+tag+'>[\\s]*([\\d\\.\\,]+)[\\s]*<\\/'+tag+'>')); return m?parseFloat(m[1].replace(',','.')):null; };
     var usdC=pv(r[0],'COMPRA'), usdV=pv(r[0],'VENTA'), ui=pv(r[1],'VENTA'), ui2=pv(r[1],'VENTAMANANA'), eur=pv(r[2],'VENTA');

@@ -1,155 +1,236 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aborgama — Calculadora de Préstamos</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --green:#2d8a4e;--green-dark:#1e6638;--green-light:#4caf6e;--green-pale:#e8f5ed;
-      --bg:#f5f7f5;--surface:#fff;--sidebar:#1e3a28;
-      --text:#1a1a1a;--muted:#5c6b63;--border:#d4e4d8;--border2:#c2d9c9;
-      --red:#c0392b;--amber:#b5720a;--mono:'Courier New',monospace;
-    }
-    html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:var(--text)}
-    .app{display:flex;height:100vh;overflow:hidden}
-    .sidebar{width:190px;background:var(--sidebar);flex-shrink:0;display:flex;flex-direction:column;height:100vh}
-    .sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
-    .logo-wrap{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-    .logo-mark{width:34px;height:34px;background:var(--green-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
-    .logo-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.02em}
-    .logo-sub{font-size:10px;color:rgba(255,255,255,.4);line-height:1.4}
-    .sidebar-section{padding:12px 0 4px}
-    .sidebar-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.28);letter-spacing:.1em;padding:0 16px 5px;text-transform:uppercase}
-    .nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;color:rgba(255,255,255,.52);font-size:12px;transition:all .12s;border-left:3px solid transparent;margin-bottom:1px}
-    .nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}
-    .nav-item.active{background:rgba(76,175,110,.15);color:#a8e6bc;border-left-color:var(--green-light);font-weight:600}
-    .nav-item i{font-size:16px;width:18px;text-align:center}
-    .sidebar-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.07);margin-top:auto}
-    .sidebar-footer-txt{font-size:10px;color:rgba(255,255,255,.22);line-height:1.5}
-    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
-    .topbar-left{display:flex;align-items:center;gap:7px}
-    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0;transition:background .3s}
-    .status-dot.ok{background:var(--green)}.status-dot.err{background:var(--red)}
-    .status-txt{font-size:11px;color:var(--muted)}
-    .cotiz-row{display:flex;gap:5px;flex-wrap:wrap}
-    .cpill{background:var(--green-pale);border:1px solid var(--border2);border-radius:4px;padding:3px 9px;font-size:11px;font-family:var(--mono);white-space:nowrap}
-    .cpill-lbl{color:var(--muted);font-size:10px;margin-right:3px}
-    .cpill-val{color:var(--green-dark);font-weight:700}
-    .content{flex:1;overflow-y:auto;padding:16px}
-    .panel{display:none}.panel.active{display:block}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
-    .card-hdr{font-size:11px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.07em;margin-bottom:13px;padding-bottom:10px;border-bottom:2px solid var(--green-pale);display:flex;align-items:center;justify-content:space-between}
-    .field{margin-bottom:11px}
-    .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:500}
-    .field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text);font-size:13px;font-family:var(--mono);transition:border-color .12s,box-shadow .12s}
-    .field input:focus,.field select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 2px rgba(45,138,78,.12)}
-    .radio-grp{display:flex;gap:4px}
-    .ropt{flex:1;padding:6px 4px;text-align:center;font-size:11px;border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted);transition:all .12s;background:var(--bg);user-select:none}
-    .ropt:hover{border-color:var(--green-light);color:var(--green-dark)}
-    .ropt.sel{background:var(--green-pale);border-color:var(--green);color:var(--green-dark);font-weight:600}
-    .btn-calc{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;letter-spacing:.02em;transition:background .12s}
-    .btn-calc:hover{background:var(--green-dark)}
-    .btn-sm{padding:5px 11px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .12s}
-    .btn-sm:hover{border-color:var(--green);color:var(--green-dark)}
-    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
-    .metric{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px 9px}
-    .metric-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500}
-    .metric-val{font-size:15px;font-weight:700;font-family:var(--mono);color:var(--text)}
-    .metric-val.blue{color:var(--green-dark)}.metric-val.red{color:var(--red)}.metric-val.green{color:var(--green)}
-    .tbl-wrap{border:1px solid var(--border);border-radius:6px;max-height:300px;overflow-y:auto}
-    .tbl-wrap::-webkit-scrollbar{width:5px}
-    .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
-    table{width:100%;border-collapse:collapse;font-size:11px}
-    th{background:var(--green-pale);padding:8px 9px;text-align:right;font-weight:700;font-size:10px;color:var(--green-dark);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border2);position:sticky;top:0;z-index:1}
-    th:first-child{text-align:center;width:38px}
-    td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px}
-    td:first-child{text-align:center;color:var(--muted);font-family:sans-serif}
-    tr:hover td{background:var(--green-pale)}
-    tr:last-child td{border-bottom:none}
-    .bar-c{display:inline-block;height:5px;background:var(--green);border-radius:1px;vertical-align:middle}
-    .bar-i{display:inline-block;height:5px;background:#d9534f;border-radius:1px;vertical-align:middle}
-    .legend{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;margin-bottom:9px}
-    .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .winner-tag{font-size:10px;background:var(--green-pale);color:var(--green-dark);border:1px solid var(--border2);padding:2px 8px;border-radius:4px;font-weight:600}
-    .diff-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:13px}
-    .diff-txt{font-size:13px;color:var(--text);line-height:1.65}
-    .diff-warn{font-size:11px;color:var(--amber);margin-top:9px;padding:8px 11px;background:#fdf8ec;border:1px solid #e8d5a0;border-radius:5px;line-height:1.5}
-    .hist-item{padding:13px 0;border-bottom:1px solid var(--border)}
-    .hist-item:last-child{border-bottom:none}
-    .hist-main{color:var(--text);margin-bottom:3px;font-weight:600;font-size:12px}
-    .hist-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:6px}
-    .hist-actions{display:flex;gap:6px}
-    .btn-hist-ver{padding:5px 12px;background:var(--green-pale);border:1px solid var(--border2);border-radius:4px;color:var(--green-dark);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s}
-    .btn-hist-ver:hover{background:var(--green);color:#fff;border-color:var(--green)}
-    .empty-state{padding:2.5rem;text-align:center;color:var(--muted);font-size:12px}
-    /* MODAL */
-    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
-    .modal-overlay.open{display:flex}
-    .modal{background:var(--surface);border-radius:10px;width:92%;max-width:820px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
-    .modal-hdr{background:var(--green-pale);border-bottom:2px solid var(--border2);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-    .modal-title{font-size:13px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.05em}
-    .modal-hdr-actions{display:flex;gap:8px;align-items:center}
-    .btn-imprimir{padding:7px 16px;background:var(--green);color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .12s}
-    .btn-imprimir:hover{background:var(--green-dark)}
-    .btn-cerrar{padding:6px 10px;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--muted);font-size:12px;cursor:pointer}
-    .btn-cerrar:hover{border-color:var(--red);color:var(--red)}
-    .modal-body{overflow-y:auto;padding:20px}
-    /* PRINT DOC (preview dentro del modal) */
-    .print-doc{max-width:740px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-    .print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d8a4e;margin-bottom:20px}
-    .print-brand{display:flex;align-items:center;gap:12px}
-    .print-logo-mark{width:42px;height:42px;background:#2d8a4e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
-    .print-brand-name{font-size:20px;font-weight:800;color:#1e6638;letter-spacing:.02em}
-    .print-brand-sub{font-size:11px;color:#5c6b63;margin-top:2px}
-    .print-meta{text-align:right;font-size:11px;color:#5c6b63;line-height:1.6}
-    .print-title{font-size:17px;font-weight:700;color:#1e6638;margin-bottom:14px}
-    .print-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
-    .print-metric{background:#e8f5ed;border:1px solid #c2d9c9;border-radius:6px;padding:11px 12px}
-    .print-metric-lbl{font-size:10px;color:#5c6b63;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
-    .print-metric-val{font-size:16px;font-weight:700;font-family:'Courier New',monospace;color:#1e6638}
-    .print-metric-val.red{color:#c0392b}
-    .print-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}
-    .print-tbl th{background:#e8f5ed;padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:#1e6638;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #c2d9c9;border-top:1px solid #c2d9c9}
-    .print-tbl th:first-child{text-align:center;width:40px}
-    .print-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid #d4e4d8;color:#1a1a1a;font-family:'Courier New',monospace;font-size:11px}
-    .print-tbl td:first-child{text-align:center;color:#5c6b63;font-family:sans-serif}
-    .print-tbl tr:nth-child(even) td{background:#f9fcfa}
-    .print-footer{border-top:2px solid #e8f5ed;padding-top:12px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}
-    .print-footer-brand{display:flex;align-items:center;gap:8px}
-    .print-footer-logo{width:24px;height:24px;background:#2d8a4e;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
-    .print-footer-txt{font-size:11px;color:#5c6b63;line-height:1.5}
-    .print-footer-txt strong{color:#1e6638}
-    .print-disclaimer{font-size:10px;color:#5c6b63;text-align:right;line-height:1.5}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aborgama — Calculadora de Préstamos</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#2d8a4e;--green-dark:#1e6638;--green-light:#4caf6e;--green-pale:#e8f5ed;
+  --bg:#f5f7f5;--surface:#fff;--sidebar:#1e3a28;
+  --text:#1a1a1a;--muted:#5c6b63;--border:#d4e4d8;--border2:#c2d9c9;
+  --red:#c0392b;--amber:#b5720a;--mono:'Courier New',monospace;
+}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:var(--text)}
+
+/* LOGIN */
+.login-screen{display:flex;align-items:center;justify-content:center;height:100vh;background:var(--sidebar)}
+.login-box{background:var(--surface);border-radius:10px;padding:32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px;justify-content:center}
+.login-logo-mark{width:36px;height:36px;background:var(--green-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:#fff}
+.login-logo-name{font-size:16px;font-weight:700;color:var(--green-dark)}
+.login-sub{text-align:center;font-size:11px;color:var(--muted);margin-bottom:22px}
+.login-field{margin-bottom:12px}
+.login-field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500}
+.login-field input{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg)}
+.login-field input:focus{outline:none;border-color:var(--green)}
+.login-btn{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px}
+.login-btn:hover{background:var(--green-dark)}
+.login-error{color:var(--red);font-size:11px;margin-top:10px;text-align:center;min-height:14px}
+
+/* LAYOUT */
+.app{display:none;height:100vh;overflow:hidden}
+.app.show{display:flex}
+.sidebar{width:190px;background:var(--sidebar);flex-shrink:0;display:flex;flex-direction:column;height:100vh}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo-wrap{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.logo-mark{width:34px;height:34px;background:var(--green-light);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
+.logo-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.02em}
+.logo-sub{font-size:10px;color:rgba(255,255,255,.4);line-height:1.4}
+.sidebar-section{padding:12px 0 4px}
+.sidebar-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.28);letter-spacing:.1em;padding:0 16px 5px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;color:rgba(255,255,255,.52);font-size:12px;transition:all .12s;border-left:3px solid transparent;margin-bottom:1px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}
+.nav-item.active{background:rgba(76,175,110,.15);color:#a8e6bc;border-left-color:var(--green-light);font-weight:600}
+.nav-item i{font-size:16px;width:18px;text-align:center}
+.sidebar-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.07);margin-top:auto}
+.sidebar-footer-txt{font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:8px}
+.btn-logout{width:100%;padding:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:5px;color:rgba(255,255,255,.6);font-size:11px;cursor:pointer}
+.btn-logout:hover{background:rgba(255,255,255,.1);color:#fff}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:7px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0}
+.status-dot.ok{background:var(--green)}.status-dot.err{background:var(--red)}
+.status-txt{font-size:11px;color:var(--muted)}
+.cotiz-row{display:flex;gap:5px;flex-wrap:wrap}
+.cpill{background:var(--green-pale);border:1px solid var(--border2);border-radius:4px;padding:3px 9px;font-size:11px;font-family:var(--mono);white-space:nowrap}
+.cpill-lbl{color:var(--muted);font-size:10px;margin-right:3px}
+.cpill-val{color:var(--green-dark);font-weight:700}
+.content{flex:1;overflow-y:auto;padding:16px}
+.panel{display:none}.panel.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card-hdr{font-size:11px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.07em;margin-bottom:13px;padding-bottom:10px;border-bottom:2px solid var(--green-pale);display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+/* FORM */
+.field{margin-bottom:11px}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:500}
+.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text);font-size:13px;font-family:var(--mono)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 2px rgba(45,138,78,.12)}
+.radio-grp{display:flex;gap:4px}
+.ropt{flex:1;padding:6px 4px;text-align:center;font-size:11px;border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted);background:var(--bg);user-select:none}
+.ropt:hover{border-color:var(--green-light);color:var(--green-dark)}
+.ropt.sel{background:var(--green-pale);border-color:var(--green);color:var(--green-dark);font-weight:600}
+.btn-calc{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px}
+.btn-calc:hover{background:var(--green-dark)}
+.btn-sm{padding:5px 11px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer}
+.btn-sm:hover{border-color:var(--green);color:var(--green-dark)}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* TRAMOS */
+.tramos-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.tramo-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px}
+.tramo-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tramo-num{font-size:10px;font-weight:700;color:var(--green-dark);background:var(--green-pale);padding:2px 8px;border-radius:10px}
+.tramo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tramo-grid .field{margin-bottom:6px}
+.tramo-grid .field label{font-size:10px}
+.tramo-gracia{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:var(--muted)}
+.tramo-gracia input{width:auto}
+.btn-add-tramo{width:100%;padding:8px;background:transparent;border:1.5px dashed var(--border2);border-radius:6px;color:var(--green-dark);font-size:12px;font-weight:600;cursor:pointer}
+.btn-add-tramo:hover{background:var(--green-pale);border-color:var(--green)}
+.btn-del-tramo{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.metric{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px 9px}
+.metric-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500}
+.metric-val{font-size:15px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.metric-val.blue{color:var(--green-dark)}.metric-val.red{color:var(--red)}.metric-val.green{color:var(--green)}
+
+/* TABLE */
+.tbl-wrap{border:1px solid var(--border);border-radius:6px;max-height:300px;overflow-y:auto}
+.tbl-wrap::-webkit-scrollbar{width:5px}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--green-pale);padding:8px 9px;text-align:right;font-weight:700;font-size:10px;color:var(--green-dark);text-transform:uppercase;border-bottom:1px solid var(--border2);position:sticky;top:0;z-index:1}
+th:first-child{text-align:center;width:38px}
+td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px}
+td:first-child{text-align:center;color:var(--muted);font-family:sans-serif}
+tr:hover td{background:var(--green-pale)}
+tr.row-gracia td{background:#fdf3e3}
+tr:last-child td{border-bottom:none}
+.bar-c{display:inline-block;height:5px;background:var(--green);border-radius:1px;vertical-align:middle}
+.bar-i{display:inline-block;height:5px;background:#d9534f;border-radius:1px;vertical-align:middle}
+.legend{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+.tag-gracia{font-size:9px;background:#fdf3e3;color:var(--amber);padding:1px 6px;border-radius:8px;font-weight:600}
+
+/* COMPARE */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.winner-tag{font-size:10px;background:var(--green-pale);color:var(--green-dark);border:1px solid var(--border2);padding:2px 8px;border-radius:4px;font-weight:600}
+.diff-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:13px}
+.diff-txt{font-size:13px;color:var(--text);line-height:1.65}
+.diff-warn{font-size:11px;color:var(--amber);margin-top:9px;padding:8px 11px;background:#fdf8ec;border:1px solid #e8d5a0;border-radius:5px;line-height:1.5}
+.scenario-select{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.scenario-select select{flex:1;min-width:200px}
+
+/* HISTORIAL */
+.hist-item{padding:13px 0;border-bottom:1px solid var(--border)}
+.hist-item:last-child{border-bottom:none}
+.hist-main{color:var(--text);margin-bottom:3px;font-weight:600;font-size:12px}
+.hist-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:6px}
+.hist-actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn-hist-ver{padding:5px 12px;background:var(--green-pale);border:1px solid var(--border2);border-radius:4px;color:var(--green-dark);font-size:11px;font-weight:600;cursor:pointer}
+.btn-hist-ver:hover{background:var(--green);color:#fff;border-color:var(--green)}
+.empty-state{padding:2.5rem;text-align:center;color:var(--muted);font-size:12px}
+.loading-state{padding:2rem;text-align:center;color:var(--muted);font-size:12px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:10px;width:92%;max-width:820px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
+.modal-hdr{background:var(--green-pale);border-bottom:2px solid var(--border2);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:13px;font-weight:700;color:var(--green-dark);text-transform:uppercase}
+.modal-hdr-actions{display:flex;gap:8px;align-items:center}
+.btn-imprimir{padding:7px 16px;background:var(--green);color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-imprimir:hover{background:var(--green-dark)}
+.btn-cerrar{padding:6px 10px;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--muted);font-size:12px;cursor:pointer}
+.btn-cerrar:hover{border-color:var(--red);color:var(--red)}
+.modal-body{overflow-y:auto;padding:20px}
+
+/* PRINT DOC preview */
+.print-doc{max-width:740px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d8a4e;margin-bottom:20px}
+.print-brand{display:flex;align-items:center;gap:12px}
+.print-logo-mark{width:42px;height:42px;background:#2d8a4e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
+.print-brand-name{font-size:20px;font-weight:800;color:#1e6638}
+.print-brand-sub{font-size:11px;color:#5c6b63;margin-top:2px}
+.print-meta{text-align:right;font-size:11px;color:#5c6b63;line-height:1.6}
+.print-title{font-size:17px;font-weight:700;color:#1e6638;margin-bottom:14px}
+.print-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.print-metric{background:#e8f5ed;border:1px solid #c2d9c9;border-radius:6px;padding:11px 12px}
+.print-metric-lbl{font-size:10px;color:#5c6b63;margin-bottom:3px;font-weight:500;text-transform:uppercase}
+.print-metric-val{font-size:16px;font-weight:700;font-family:'Courier New',monospace;color:#1e6638}
+.print-metric-val.red{color:#c0392b}
+.print-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}
+.print-tbl th{background:#e8f5ed;padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:#1e6638;text-transform:uppercase;border-bottom:1px solid #c2d9c9;border-top:1px solid #c2d9c9}
+.print-tbl th:first-child{text-align:center;width:40px}
+.print-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid #d4e4d8;color:#1a1a1a;font-family:'Courier New',monospace;font-size:11px}
+.print-tbl td:first-child{text-align:center;color:#5c6b63;font-family:sans-serif}
+.print-tbl tr:nth-child(even) td{background:#f9fcfa}
+.print-tbl tr.g td{background:#fdf3e3}
+.print-footer{border-top:2px solid #e8f5ed;padding-top:12px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.print-footer-brand{display:flex;align-items:center;gap:8px}
+.print-footer-logo{width:24px;height:24px;background:#2d8a4e;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+.print-footer-txt{font-size:11px;color:#5c6b63;line-height:1.5}
+.print-footer-txt strong{color:#1e6638}
+.print-disclaimer{font-size:10px;color:#5c6b63;text-align:right;line-height:1.5}
+
+@media(max-width:768px){
+  .sidebar{width:52px}
+  .logo-name,.logo-sub,.sidebar-label,.nav-item span,.sidebar-footer-txt,.btn-logout span{display:none}
+  .logo-wrap{justify-content:center}
+  .nav-item{justify-content:center;padding:10px 0}
+  .grid2,.compare-grid,.tramo-grid{grid-template-columns:1fr}
+  .cotiz-row{display:none}
+}
+</style>
 </head>
 <body>
-<div class="app">
-  <!-- SIDEBAR -->
+
+<!-- ══ LOGIN ══ -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark">A</div>
+      <div class="login-logo-name">ABORGAMA</div>
+    </div>
+    <div class="login-sub">Calculadora de préstamos · acceso privado</div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@email.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" onclick="hacerLogin()"><i class="ti ti-login"></i> Ingresar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="app" id="app-root">
   <div class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-wrap">
-        <div class="logo-mark">A</div>
-        <div class="logo-name">ABORGAMA</div>
-      </div>
+      <div class="logo-wrap"><div class="logo-mark">A</div><div class="logo-name">ABORGAMA</div></div>
       <div class="logo-sub">Calculadora de Préstamos<br>Cotizaciones BCU en vivo</div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Herramientas</div>
-      <div class="nav-item active" onclick="showTab('calc')"><i class="ti ti-calculator"></i> <span>Calcular</span></div>
-      <div class="nav-item" onclick="showTab('comp')"><i class="ti ti-layout-columns"></i> <span>Comparar</span></div>
-      <div class="nav-item" onclick="showTab('hist')"><i class="ti ti-history"></i> <span>Historial</span></div>
+      <div class="nav-item active" onclick="showTab('calc')"><i class="ti ti-calculator"></i><span>Calcular</span></div>
+      <div class="nav-item" onclick="showTab('comp')"><i class="ti ti-layout-columns"></i><span>Comparar</span></div>
+      <div class="nav-item" onclick="showTab('hist')"><i class="ti ti-history"></i><span>Historial</span></div>
     </div>
     <div class="sidebar-footer">
-      <div class="sidebar-footer-txt">Pesos UY · USD · UI<br>Sistema francés y alemán<br>Fuente: BCU Uruguay</div>
+      <div class="sidebar-footer-txt" id="user-email-txt">—</div>
+      <button class="btn-logout" onclick="hacerLogout()"><i class="ti ti-logout"></i> <span>Cerrar sesión</span></button>
     </div>
   </div>
 
-  <!-- MAIN -->
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
@@ -166,34 +247,50 @@
     </div>
 
     <div class="content">
-      <!-- CALCULAR -->
+
+      <!-- ══ CALCULAR ══ -->
       <div class="panel active" id="p-calc">
         <div class="grid2">
           <div class="card">
-            <div class="card-hdr">Parámetros del préstamo</div>
-            <div class="field"><label>Moneda</label>
+            <div class="card-hdr">
+              <span>Parámetros del préstamo</span>
+            </div>
+
+            <div class="field">
+              <label>Nombre del escenario</label>
+              <input type="text" id="f-nombre" placeholder="Ej: BID — Cumplo KPI" value="Escenario 1">
+            </div>
+            <div class="field">
+              <label>Moneda</label>
               <div class="radio-grp" id="rg-mon">
                 <div class="ropt sel" onclick="selMon(this,'UYU')">$ Pesos</div>
                 <div class="ropt" onclick="selMon(this,'USD')">USD</div>
                 <div class="ropt" onclick="selMon(this,'UI')">UI</div>
               </div>
             </div>
-            <div class="field"><label id="lbl-monto">Monto ($ UYU)</label><input type="number" id="f-monto" value="500000" min="0" step="1000"></div>
-            <div class="field"><label>Tasa nominal anual (%)</label><input type="number" id="f-tasa" value="8.5" min="0" step="0.1"></div>
-            <div class="field"><label>Plazo (meses)</label><input type="number" id="f-meses" value="36" min="1" max="360"></div>
-            <div class="field"><label>Sistema de amortización</label>
-              <div class="radio-grp" id="rg-sys">
-                <div class="ropt sel" onclick="selSys(this,'frances')">Francés (cuota fija)</div>
-                <div class="ropt" onclick="selSys(this,'aleman')">Alemán (amort. fija)</div>
-              </div>
+            <div class="field">
+              <label id="lbl-monto">Monto inicial ($ UYU)</label>
+              <input type="number" id="f-monto" value="500000" min="0" step="1000">
             </div>
-            <div class="field"><label>Comisión de apertura (%)</label><input type="number" id="f-com" value="0" min="0" step="0.1"></div>
-            <button class="btn-calc" onclick="calcular()"><i class="ti ti-calculator"></i> Calcular amortización</button>
+
+            <div class="card-hdr" style="margin-top:14px">
+              <span>Tramos del préstamo</span>
+              <span class="btn-sm" style="cursor:default;color:var(--muted)" title="Cada tramo puede tener su propia tasa, plazo y gracia">
+                <i class="ti ti-info-circle"></i>
+              </span>
+            </div>
+            <div class="tramos-list" id="tramos-list"></div>
+            <button class="btn-add-tramo" onclick="agregarTramo()"><i class="ti ti-plus"></i> Agregar tramo</button>
+
+            <button class="btn-calc" onclick="calcular()" style="margin-top:14px">
+              <i class="ti ti-calculator"></i> Calcular amortización
+            </button>
           </div>
+
           <div class="card">
             <div class="card-hdr">
               <span>Resumen</span>
-              <button class="btn-sm" onclick="guardarSim(event)"><i class="ti ti-bookmark"></i> Guardar</button>
+              <button class="btn-sm" onclick="guardarSim(event)"><i class="ti ti-cloud-upload"></i> Guardar en Firestore</button>
             </div>
             <div class="metrics">
               <div class="metric"><div class="metric-lbl">Cuota inicial</div><div class="metric-val blue" id="m-cuota">—</div></div>
@@ -206,79 +303,46 @@
             <div class="legend">
               <span><span class="bar-c" style="width:14px;display:inline-block;margin-right:4px"></span>Capital</span>
               <span><span class="bar-i" style="width:14px;display:inline-block;margin-right:4px"></span>Interés</span>
+              <span><span class="tag-gracia">Gracia</span> mes en período de gracia (capitaliza)</span>
             </div>
             <div class="tbl-wrap" id="tbl-wrap">
-              <div class="empty-state"><i class="ti ti-table-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Completá los datos y presioná Calcular</div>
+              <div class="empty-state"><i class="ti ti-table-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Completá los tramos y presioná Calcular</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- COMPARAR -->
+      <!-- ══ COMPARAR ══ -->
       <div class="panel" id="p-comp">
-        <div class="compare-grid">
-          <div class="card">
-            <div class="card-hdr">Préstamo A</div>
-            <div class="field"><label>Moneda</label>
-              <div class="radio-grp" id="rg-ca">
-                <div class="ropt sel" onclick="selCompMon(this,'ca','UYU')">$ Pesos</div>
-                <div class="ropt" onclick="selCompMon(this,'ca','USD')">USD</div>
-                <div class="ropt" onclick="selCompMon(this,'ca','UI')">UI</div>
-              </div>
-            </div>
-            <div class="field"><label id="ca-lbl">Monto ($ UYU)</label><input type="number" id="ca-m" value="500000" step="1000"></div>
-            <div class="field"><label>Tasa nominal anual (%)</label><input type="number" id="ca-t" value="8.5" step="0.1"></div>
-            <div class="field"><label>Plazo (meses)</label><input type="number" id="ca-p" value="36" min="1"></div>
-            <div class="field"><label>Sistema</label>
-              <div class="radio-grp" id="rg-csa">
-                <div class="ropt sel" onclick="selCompSys(this,'csa','frances')">Francés</div>
-                <div class="ropt" onclick="selCompSys(this,'csa','aleman')">Alemán</div>
-              </div>
-            </div>
-            <div class="field"><label>Comisión apertura (%)</label><input type="number" id="ca-com" value="0" step="0.1"></div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-hdr"><span>Elegí dos escenarios guardados en Firestore</span>
+            <button class="btn-sm" onclick="cargarEscenariosParaComparar()"><i class="ti ti-refresh"></i> Actualizar lista</button>
           </div>
-          <div class="card">
-            <div class="card-hdr">Préstamo B</div>
-            <div class="field"><label>Moneda</label>
-              <div class="radio-grp" id="rg-cb">
-                <div class="ropt sel" onclick="selCompMon(this,'cb','UYU')">$ Pesos</div>
-                <div class="ropt" onclick="selCompMon(this,'cb','USD')">USD</div>
-                <div class="ropt" onclick="selCompMon(this,'cb','UI')">UI</div>
-              </div>
-            </div>
-            <div class="field"><label id="cb-lbl">Monto ($ UYU)</label><input type="number" id="cb-m" value="500000" step="1000"></div>
-            <div class="field"><label>Tasa nominal anual (%)</label><input type="number" id="cb-t" value="5.8" step="0.1"></div>
-            <div class="field"><label>Plazo (meses)</label><input type="number" id="cb-p" value="36" min="1"></div>
-            <div class="field"><label>Sistema</label>
-              <div class="radio-grp" id="rg-csb">
-                <div class="ropt sel" onclick="selCompSys(this,'csb','frances')">Francés</div>
-                <div class="ropt" onclick="selCompSys(this,'csb','aleman')">Alemán</div>
-              </div>
-            </div>
-            <div class="field"><label>Comisión apertura (%)</label><input type="number" id="cb-com" value="0" step="0.1"></div>
+          <div class="scenario-select">
+            <select id="sel-esc-a"><option value="">— Escenario A —</option></select>
+            <select id="sel-esc-b"><option value="">— Escenario B —</option></select>
           </div>
-        </div>
-        <div style="text-align:center;margin:14px 0">
-          <button class="btn-calc" style="width:auto;padding:10px 36px" onclick="comparar()"><i class="ti ti-arrows-exchange"></i> Comparar préstamos</button>
+          <button class="btn-calc" style="width:auto;padding:9px 28px" onclick="compararEscenarios()"><i class="ti ti-arrows-exchange"></i> Comparar</button>
         </div>
         <div id="comp-result"></div>
       </div>
 
-      <!-- HISTORIAL -->
+      <!-- ══ HISTORIAL ══ -->
       <div class="panel" id="p-hist">
         <div class="card">
           <div class="card-hdr">
-            <span>Simulaciones guardadas</span>
-            <button class="btn-sm" onclick="limpiarHist()"><i class="ti ti-trash"></i> Limpiar todo</button>
+            <span>Escenarios guardados (Firestore)</span>
+            <button class="btn-sm" onclick="cargarHistorial()"><i class="ti ti-refresh"></i> Actualizar</button>
           </div>
-          <div id="hist-list"><div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin simulaciones guardadas aún</div></div>
+          <div id="hist-list"><div class="loading-state">Cargando…</div></div>
         </div>
       </div>
+
     </div>
   </div>
 </div>
 
-<!-- MODAL -->
+<!-- ══ MODAL ══ -->
 <div class="modal-overlay" id="modal-overlay" onclick="cerrarModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-hdr">
@@ -288,29 +352,112 @@
         <button class="btn-cerrar" onclick="cerrarModal()"><i class="ti ti-x"></i> Cerrar</button>
       </div>
     </div>
-    <div class="modal-body">
-      <div class="print-doc" id="print-doc"></div>
-    </div>
+    <div class="modal-body"><div class="print-doc" id="print-doc"></div></div>
   </div>
 </div>
 
-<script>
-var state={mon:'UYU',sys:'frances',cotiz:{usd:43.5,ui:6.28,eur:47}};
-var cmp={ca:{mon:'UYU',sys:'frances'},cb:{mon:'UYU',sys:'frances'}};
-var _simActual=null;
+<!-- ══ FIREBASE SDK ══ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyB3GfBsuMBuzeq_PpZjhf-_SbSFbSFPgsE",
+  authDomain: "deudas-financieras.firebaseapp.com",
+  projectId: "deudas-financieras",
+  storageBucket: "deudas-financieras.firebasestorage.app",
+  messagingSenderId: "568386570164",
+  appId: "1:568386570164:web:b4778c127f7ee1c08cd4e1"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+// Expone lo necesario al scope global (el resto de la app usa funciones clásicas)
+window._fb = {
+  auth, db, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp,
+  signInWithEmailAndPassword, signOut
+};
+
+onAuthStateChanged(auth, function(user){
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-root').classList.add('show');
+    document.getElementById('user-email-txt').textContent = user.email;
+    if (window.onLoginOk) window.onLoginOk();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-root').classList.remove('show');
+  }
+});
+
+window.hacerLogin = function(){
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Completá email y contraseña.'; return; }
+  signInWithEmailAndPassword(auth, email, pass).catch(function(e){
+    errEl.textContent = 'Credenciales incorrectas o usuario no existe.';
+  });
+};
+
+window.hacerLogout = function(){
+  signOut(auth);
+};
+
+// Permitir Enter para loguear
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
+    window.hacerLogin();
+  }
+});
+</script>
+
+<!-- ══ LÓGICA DE LA APP ══ -->
+<script>
+/* ══════════════════════════════════════
+   ESTADO
+══════════════════════════════════════ */
+var state = { mon:'UYU', cotiz:{usd:43.5,ui:6.28,eur:47} };
+var tramos = [
+  { meses:12, tasa:12.5, gracia:true,  sistema:'frances' },
+  { meses:24, tasa:12.5, gracia:false, sistema:'frances' },
+  { meses:24, tasa:12.0, gracia:false, sistema:'frances' }
+];
+var _ultimaSim = null;
+var _simModal = null;
+var _escenariosCache = [];
+
+window.onLoginOk = function(){
+  renderTramos();
+  cargarCotiz();
+  cargarHistorial();
+};
+
+/* ══════════════════════════════════════
+   NAVEGACIÓN
+══════════════════════════════════════ */
 function showTab(t){
   ['calc','comp','hist'].forEach(function(x,i){
     document.querySelectorAll('.nav-item')[i].classList.toggle('active',x===t);
     document.getElementById('p-'+x).classList.toggle('active',x===t);
   });
-  if(t==='hist') renderHist();
+  if (t==='hist') cargarHistorial();
+  if (t==='comp') cargarEscenariosParaComparar();
 }
-function selMon(el,v){sel('#rg-mon',el);state.mon=v;document.getElementById('lbl-monto').textContent='Monto ('+mlbl(v)+')';}
-function selSys(el,v){sel('#rg-sys',el);state.sys=v;}
-function selCompMon(el,g,v){sel('#rg-'+g,el);cmp[g].mon=v;document.getElementById(g+'-lbl').textContent='Monto ('+mlbl(v)+')';}
-function selCompSys(el,g,v){sel('#rg-'+g,el);cmp[g].sys=v;}
-function sel(grp,el){document.querySelectorAll(grp+' .ropt').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');}
+
+function selMon(el,v){
+  document.querySelectorAll('#rg-mon .ropt').forEach(function(x){x.classList.remove('sel');});
+  el.classList.add('sel'); state.mon=v;
+  document.getElementById('lbl-monto').textContent='Monto inicial ('+mlbl(v)+')';
+}
 function mlbl(m){return m==='UYU'?'$ UYU':m==='USD'?'USD':'UI';}
 
 function fmt(n,m){
@@ -319,239 +466,402 @@ function fmt(n,m){
   return n.toLocaleString('es-UY',{minimumFractionDigits:4,maximumFractionDigits:4})+'\u00a0UI';
 }
 
-function calcAmort(P,tna,n,sys){
-  var tm=tna/100/12,rows=[],saldo=P;
-  var cf=tm>0?P*(tm*Math.pow(1+tm,n))/(Math.pow(1+tm,n)-1):P/n;
-  for(var i=1;i<=n;i++){
-    var interes=saldo*tm,cap,cuota;
-    if(sys==='frances'){cuota=cf;cap=cuota-interes;}
-    else{cap=P/n;cuota=cap+interes;}
-    saldo-=cap;if(saldo<0.005)saldo=0;
-    rows.push({n:i,cuota:cuota,cap:cap,int:interes,saldo:saldo});
+/* ══════════════════════════════════════
+   TRAMOS — UI
+══════════════════════════════════════ */
+function renderTramos(){
+  var el = document.getElementById('tramos-list');
+  el.innerHTML = tramos.map(function(t,i){
+    return '<div class="tramo-card">'
+      +'<div class="tramo-hdr"><span class="tramo-num">Tramo '+(i+1)+'</span>'
+        +(tramos.length>1?'<button class="btn-del-tramo" onclick="quitarTramo('+i+')" title="Eliminar tramo"><i class="ti ti-x"></i></button>':'')
+      +'</div>'
+      +'<div class="tramo-grid">'
+        +'<div class="field"><label>Meses</label><input type="number" min="1" value="'+t.meses+'" onchange="actualizarTramo('+i+',\'meses\',this.value)"></div>'
+        +'<div class="field"><label>Tasa nominal anual (%)</label><input type="number" step="0.1" value="'+t.tasa+'" onchange="actualizarTramo('+i+',\'tasa\',this.value)"></div>'
+      +'</div>'
+      +'<div class="field"><label>Sistema en este tramo</label>'
+        +'<div class="radio-grp">'
+          +'<div class="ropt'+(t.sistema==='frances'?' sel':'')+'" onclick="actualizarTramoSys('+i+',\'frances\',this)">Francés</div>'
+          +'<div class="ropt'+(t.sistema==='aleman'?' sel':'')+'" onclick="actualizarTramoSys('+i+',\'aleman\',this)">Alemán</div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="tramo-gracia">'
+        +'<input type="checkbox" id="gracia-'+i+'" '+(t.gracia?'checked':'')+' onchange="actualizarTramo('+i+',\'gracia\',this.checked)">'
+        +'<label for="gracia-'+i+'" style="margin:0;cursor:pointer">Período de gracia (no se paga, el interés se capitaliza al capital)</label>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function agregarTramo(){
+  tramos.push({meses:12, tasa:tramos[tramos.length-1].tasa, gracia:false, sistema:'frances'});
+  renderTramos();
+}
+function quitarTramo(i){ tramos.splice(i,1); renderTramos(); }
+function actualizarTramo(i,campo,val){
+  if(campo==='meses') tramos[i].meses = parseInt(val)||1;
+  else if(campo==='tasa') tramos[i].tasa = parseFloat(val)||0;
+  else if(campo==='gracia') tramos[i].gracia = !!val;
+}
+function actualizarTramoSys(i,val,el){
+  tramos[i].sistema = val;
+  el.parentElement.querySelectorAll('.ropt').forEach(function(x){x.classList.remove('sel');});
+  el.classList.add('sel');
+}
+
+/* ══════════════════════════════════════
+   MOTOR DE AMORTIZACIÓN POR TRAMOS
+══════════════════════════════════════ */
+function calcAmortTramos(montoInicial, listaTramos){
+  var saldo = montoInicial;
+  var rows = [];
+  var nGlobal = 0;
+
+  for (var ti=0; ti<listaTramos.length; ti++){
+    var tr = listaTramos[ti];
+    var tm = tr.tasa/100/12;
+
+    if (tr.gracia){
+      // No se paga nada; el interés capitaliza al saldo cada mes
+      for (var m=1; m<=tr.meses; m++){
+        nGlobal++;
+        var interesG = saldo*tm;
+        saldo += interesG; // capitaliza
+        rows.push({ n:nGlobal, cuota:0, cap:0, int:interesG, saldo:saldo, gracia:true });
+      }
+      continue;
+    }
+
+    // Tramo de pago normal: recalcular cuota fija (francés) o amortización fija (alemán)
+    // usando el saldo actual y los meses que quedan EN ESTE TRAMO
+    var mesesTramo = tr.meses;
+    if (tr.sistema === 'frances'){
+      var cuotaFija = tm>0 ? saldo*(tm*Math.pow(1+tm,mesesTramo))/(Math.pow(1+tm,mesesTramo)-1) : saldo/mesesTramo;
+      for (var m2=1; m2<=mesesTramo; m2++){
+        nGlobal++;
+        var interes = saldo*tm;
+        var cap = cuotaFija - interes;
+        saldo -= cap; if (saldo<0.005) saldo=0;
+        rows.push({ n:nGlobal, cuota:cuotaFija, cap:cap, int:interes, saldo:saldo, gracia:false });
+      }
+    } else {
+      // alemán: amortización fija de capital
+      var capFijo = saldo/mesesTramo;
+      for (var m3=1; m3<=mesesTramo; m3++){
+        nGlobal++;
+        var interes2 = saldo*tm;
+        var cuota2 = capFijo + interes2;
+        saldo -= capFijo; if (saldo<0.005) saldo=0;
+        rows.push({ n:nGlobal, cuota:cuota2, cap:capFijo, int:interes2, saldo:saldo, gracia:false });
+      }
+    }
   }
   return rows;
 }
 
-function calcTIR(P,fl){
+function calcTIR(P, fl){
   var r=0.01;
   for(var i=0;i<200;i++){
     var f=fl.reduce(function(s,c,j){return s+c/Math.pow(1+r,j+1);},0)-P;
     var d=fl.reduce(function(s,c,j){return s-(j+1)*c/Math.pow(1+r,j+2);},0);
     if(!d) break;
-    var nr=r-f/d;if(Math.abs(nr-r)<1e-8){r=nr;break;}r=nr;
+    var nr=r-f/d; if(Math.abs(nr-r)<1e-8){r=nr;break;} r=nr;
   }
   return r*12*100;
 }
 
-function calcular(){
-  var P=parseFloat(document.getElementById('f-monto').value)||0;
-  var tna=parseFloat(document.getElementById('f-tasa').value)||0;
-  var n=parseInt(document.getElementById('f-meses').value)||0;
-  var com=parseFloat(document.getElementById('f-com').value)||0;
-  if(!P||!n){alert('Completá el monto y el plazo.');return;}
-  var rows=calcAmort(P,tna,n,state.sys);
-  var totP=rows.reduce(function(s,r){return s+r.cuota;},0);
-  var totI=rows.reduce(function(s,r){return s+r.int;},0);
-  var tir=calcTIR(P*(1-com/100),rows.map(function(r){return r.cuota;}));
-  var usdEq=state.mon==='USD'?P:state.mon==='UI'?P*state.cotiz.ui/state.cotiz.usd:P/state.cotiz.usd;
-  document.getElementById('m-cuota').textContent=fmt(rows[0].cuota,state.mon);
-  document.getElementById('m-total').textContent=fmt(totP,state.mon);
-  document.getElementById('m-int').textContent=fmt(totI,state.mon);
-  document.getElementById('m-tir').textContent=tir.toFixed(2)+'% anual';
-  document.getElementById('m-ult').textContent=fmt(rows[rows.length-1].cuota,state.mon);
-  document.getElementById('m-usd').textContent='U$S '+Math.round(usdEq).toLocaleString('es-UY');
+/* ══════════════════════════════════════
+   TABLA HTML
+══════════════════════════════════════ */
+function buildTableHTML(rows, mon){
   var h='<table><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th><th style="width:76px">Dist.</th></tr></thead><tbody>';
-  rows.forEach(function(r){var pct=r.cap/r.cuota;h+='<tr><td>'+r.n+'</td><td>'+fmt(r.cuota,state.mon)+'</td><td>'+fmt(r.cap,state.mon)+'</td><td>'+fmt(r.int,state.mon)+'</td><td>'+fmt(r.saldo,state.mon)+'</td><td><span class="bar-c" style="width:'+(pct*54).toFixed(0)+'px"></span><span class="bar-i" style="width:'+((1-pct)*54).toFixed(0)+'px"></span></td></tr>';});
-  h+='</tbody></table>';
-  document.getElementById('tbl-wrap').innerHTML=h;
-  window._lastSim={P:P,tna:tna,n:n,sys:state.sys,mon:state.mon,com:com,cuota:rows[0].cuota,total:totP,int:totI,tir:tir,ts:new Date().toLocaleString('es-UY')};
+  rows.forEach(function(r){
+    var pct = r.cuota>0 ? r.cap/r.cuota : 0;
+    h += '<tr'+(r.gracia?' class="row-gracia"':'')+'>'
+      +'<td>'+r.n+(r.gracia?' <span class="tag-gracia">G</span>':'')+'</td>'
+      +'<td>'+(r.gracia?'<em style="font-style:normal;color:var(--amber)">capitaliza</em>':fmt(r.cuota,mon))+'</td>'
+      +'<td>'+fmt(r.cap,mon)+'</td>'
+      +'<td>'+fmt(r.int,mon)+'</td>'
+      +'<td>'+fmt(r.saldo,mon)+'</td>'
+      +'<td>'+(r.gracia?'':'<span class="bar-c" style="width:'+(pct*54).toFixed(0)+'px"></span><span class="bar-i" style="width:'+((1-pct)*54).toFixed(0)+'px"></span>')+'</td>'
+      +'</tr>';
+  });
+  return h+'</tbody></table>';
 }
 
-function guardarSim(event){
-  if(!window._lastSim){alert('Calculá primero.');return;}
-  var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
-  sims.unshift(Object.assign({},window._lastSim));
-  sims=sims.slice(0,30);
-  localStorage.setItem('abg-sims',JSON.stringify(sims));
-  var btn=event.currentTarget,orig=btn.innerHTML;
-  btn.textContent='✓ Guardado';btn.style.color='var(--green)';
-  setTimeout(function(){btn.innerHTML=orig;btn.style.color='';},1600);
+/* ══════════════════════════════════════
+   CALCULAR
+══════════════════════════════════════ */
+function calcular(){
+  var P = parseFloat(document.getElementById('f-monto').value)||0;
+  var nombre = document.getElementById('f-nombre').value.trim() || 'Escenario sin nombre';
+  if(!P || !tramos.length){ alert('Completá el monto y al menos un tramo.'); return; }
+  for (var i=0;i<tramos.length;i++){
+    if(!tramos[i].meses || tramos[i].meses<1){ alert('Revisá los meses del tramo '+(i+1)+'.'); return; }
+  }
+
+  var rows = calcAmortTramos(P, tramos);
+  var totP = rows.reduce(function(s,r){return s+r.cuota;},0);
+  var totI = rows.reduce(function(s,r){return s+r.int;},0);
+  var flujosPagos = rows.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;});
+  var tir = flujosPagos.length ? calcTIR(P, flujosPagos) : 0;
+  var usdEq = state.mon==='USD'?P: state.mon==='UI'?P*state.cotiz.ui/state.cotiz.usd: P/state.cotiz.usd;
+  var ultimaCuota = rows[rows.length-1];
+
+  document.getElementById('m-cuota').textContent = fmt(rows.find(function(r){return !r.gracia;}) ? rows.find(function(r){return !r.gracia;}).cuota : 0, state.mon);
+  document.getElementById('m-total').textContent = fmt(totP, state.mon);
+  document.getElementById('m-int').textContent   = fmt(totI, state.mon);
+  document.getElementById('m-tir').textContent   = tir.toFixed(2)+'% anual';
+  document.getElementById('m-ult').textContent   = fmt(ultimaCuota.cuota, state.mon);
+  document.getElementById('m-usd').textContent   = 'U$S '+Math.round(usdEq).toLocaleString('es-UY');
+  document.getElementById('tbl-wrap').innerHTML  = buildTableHTML(rows, state.mon);
+
+  _ultimaSim = {
+    nombre: nombre, monto: P, moneda: state.mon,
+    tramos: JSON.parse(JSON.stringify(tramos)),
+    cuotaInicial: rows.find(function(r){return !r.gracia;}) ? rows.find(function(r){return !r.gracia;}).cuota : 0,
+    total: totP, intereses: totI, tir: tir,
+    meses: rows.length
+  };
 }
 
-function renderHist(){
-  var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
-  var el=document.getElementById('hist-list');
-  if(!sims.length){el.innerHTML='<div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin simulaciones guardadas aún</div>';return;}
-  el.innerHTML=sims.map(function(s,i){
-    return '<div class="hist-item">'
-      +'<div class="hist-main">'+fmt(s.P,s.mon)+' · '+s.tna+'% anual · '+s.n+' meses · '+s.sys+'</div>'
-      +'<div class="hist-sub">Cuota: '+fmt(s.cuota,s.mon)+' &nbsp;|&nbsp; Intereses: '+fmt(s.int,s.mon)+' &nbsp;|&nbsp; TIR: '+s.tir.toFixed(2)+'% &nbsp;|&nbsp; '+s.ts+'</div>'
-      +'<div class="hist-actions">'
-        +'<button class="btn-hist-ver" onclick="verSimulacion('+i+')"><i class="ti ti-table"></i> Ver amortización</button>'
-        +'<button class="btn-sm" onclick="eliminarSim('+i+')"><i class="ti ti-trash"></i> Eliminar</button>'
-      +'</div></div>';
-  }).join('');
+/* ══════════════════════════════════════
+   FIRESTORE — GUARDAR / LISTAR / BORRAR
+══════════════════════════════════════ */
+async function guardarSim(event){
+  if(!_ultimaSim){ alert('Calculá primero.'); return; }
+  var btn = event.currentTarget, orig = btn.innerHTML;
+  btn.textContent = 'Guardando…';
+  try{
+    var fb = window._fb;
+    await fb.addDoc(fb.collection(fb.db,'escenarios'), Object.assign({}, _ultimaSim, { creado: fb.serverTimestamp() }));
+    btn.innerHTML = '✓ Guardado'; btn.style.color='var(--green)';
+  }catch(e){
+    console.error(e);
+    btn.textContent = 'Error al guardar';
+    btn.style.color = 'var(--red)';
+  }
+  setTimeout(function(){ btn.innerHTML=orig; btn.style.color=''; }, 1800);
 }
 
-function eliminarSim(i){
-  var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
-  sims.splice(i,1);localStorage.setItem('abg-sims',JSON.stringify(sims));renderHist();
+async function cargarHistorial(){
+  var el = document.getElementById('hist-list');
+  el.innerHTML = '<div class="loading-state">Cargando desde Firestore…</div>';
+  try{
+    var fb = window._fb;
+    var q = fb.query(fb.collection(fb.db,'escenarios'), fb.orderBy('creado','desc'));
+    var snap = await fb.getDocs(q);
+    _escenariosCache = [];
+    snap.forEach(function(d){ _escenariosCache.push(Object.assign({id:d.id}, d.data())); });
+
+    if(!_escenariosCache.length){
+      el.innerHTML = '<div class="empty-state"><i class="ti ti-bookmark-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sin escenarios guardados aún</div>';
+      return;
+    }
+    el.innerHTML = _escenariosCache.map(function(s,i){
+      return '<div class="hist-item">'
+        +'<div class="hist-main">'+s.nombre+' · '+fmt(s.monto,s.moneda)+' · '+s.tramos.length+' tramo(s) · '+s.meses+' meses totales</div>'
+        +'<div class="hist-sub">Cuota inicial: '+fmt(s.cuotaInicial,s.moneda)+' &nbsp;|&nbsp; Intereses: '+fmt(s.intereses,s.moneda)+' &nbsp;|&nbsp; TIR: '+s.tir.toFixed(2)+'%</div>'
+        +'<div class="hist-actions">'
+          +'<button class="btn-hist-ver" onclick="verSimulacion(\''+s.id+'\')"><i class="ti ti-table"></i> Ver amortización</button>'
+          +'<button class="btn-sm danger" onclick="eliminarSim(\''+s.id+'\')"><i class="ti ti-trash"></i> Eliminar</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){
+    console.error(e);
+    el.innerHTML = '<div class="empty-state" style="color:var(--red)">Error al conectar con Firestore. Revisá la consola.</div>';
+  }
 }
 
-function limpiarHist(){if(confirm('¿Borrar todo el historial?')){localStorage.removeItem('abg-sims');renderHist();}}
+async function eliminarSim(id){
+  if(!confirm('¿Eliminar este escenario?')) return;
+  try{
+    var fb = window._fb;
+    await fb.deleteDoc(fb.doc(fb.db,'escenarios',id));
+    cargarHistorial();
+  }catch(e){ alert('Error al eliminar.'); console.error(e); }
+}
 
+/* ══════════════════════════════════════
+   VER / IMPRIMIR
+══════════════════════════════════════ */
 function buildPrintHTML(s){
-  var rows=calcAmort(s.P,s.tna,s.n,s.sys);
-  var totP=rows.reduce(function(a,r){return a+r.cuota;},0);
-  var totI=rows.reduce(function(a,r){return a+r.int;},0);
-  var now=new Date().toLocaleDateString('es-UY',{year:'numeric',month:'long',day:'numeric'});
-  var sistLbl=s.sys==='frances'?'Sistema francés — cuota fija':'Sistema alemán — amortización fija';
-  var monLbl=s.mon==='UYU'?'Pesos uruguayos (UYU)':s.mon==='USD'?'Dólares (USD)':'Unidades Indexadas (UI)';
+  var rows = calcAmortTramos(s.monto, s.tramos);
+  var totP = rows.reduce(function(a,r){return a+r.cuota;},0);
+  var totI = rows.reduce(function(a,r){return a+r.int;},0);
+  var now = new Date().toLocaleDateString('es-UY',{year:'numeric',month:'long',day:'numeric'});
+  var monLbl = s.moneda==='UYU'?'Pesos uruguayos (UYU)': s.moneda==='USD'?'Dólares (USD)':'Unidades Indexadas (UI)';
+  var tramosTxt = s.tramos.map(function(t,i){
+    return 'T'+(i+1)+': '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' (gracia)':' · '+(t.sistema==='frances'?'francés':'alemán'));
+  }).join(' → ');
+
   var filas='';
   rows.forEach(function(r){
-    filas+='<tr><td>'+r.n+'</td><td>'+fmt(r.cuota,s.mon)+'</td><td>'+fmt(r.cap,s.mon)+'</td><td>'+fmt(r.int,s.mon)+'</td><td>'+fmt(r.saldo,s.mon)+'</td></tr>';
+    filas += '<tr'+(r.gracia?' class="g"':'')+'>'
+      +'<td>'+r.n+(r.gracia?' G':'')+'</td>'
+      +'<td>'+(r.gracia?'capitaliza':fmt(r.cuota,s.moneda))+'</td>'
+      +'<td>'+fmt(r.cap,s.moneda)+'</td>'
+      +'<td>'+fmt(r.int,s.moneda)+'</td>'
+      +'<td>'+fmt(r.saldo,s.moneda)+'</td></tr>';
   });
+
   return '<div class="print-header">'
     +'<div class="print-brand"><div class="print-logo-mark">A</div>'
     +'<div><div class="print-brand-name">ABORGAMA</div><div class="print-brand-sub">Gestión ambiental integral</div></div></div>'
-    +'<div class="print-meta"><div>Simulación de préstamo</div><div>Generado: '+now+'</div><div>www.aborgama.com</div></div>'
+    +'<div class="print-meta"><div>'+s.nombre+'</div><div>Generado: '+now+'</div><div>www.aborgama.com</div></div>'
     +'</div>'
     +'<div class="print-title">Cuadro de amortización</div>'
+    +'<div style="font-size:11px;color:#5c6b63;margin-bottom:14px"><strong>Estructura de tramos:</strong> '+tramosTxt+'</div>'
     +'<div class="print-metrics">'
-    +'<div class="print-metric"><div class="print-metric-lbl">Monto</div><div class="print-metric-val">'+fmt(s.P,s.mon)+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Monto</div><div class="print-metric-val">'+fmt(s.monto,s.moneda)+'</div></div>'
     +'<div class="print-metric"><div class="print-metric-lbl">Moneda</div><div class="print-metric-val" style="font-size:12px;font-family:sans-serif">'+monLbl+'</div></div>'
-    +'<div class="print-metric"><div class="print-metric-lbl">Tasa nominal anual</div><div class="print-metric-val">'+s.tna+'%</div></div>'
-    +'<div class="print-metric"><div class="print-metric-lbl">Plazo</div><div class="print-metric-val">'+s.n+' meses</div></div>'
-    +'<div class="print-metric"><div class="print-metric-lbl">Sistema</div><div class="print-metric-val" style="font-size:11px;font-family:sans-serif">'+sistLbl+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Plazo total</div><div class="print-metric-val">'+s.meses+' meses</div></div>'
     +'<div class="print-metric"><div class="print-metric-lbl">TIR anual</div><div class="print-metric-val">'+s.tir.toFixed(2)+'%</div></div>'
-    +'<div class="print-metric"><div class="print-metric-lbl">Cuota inicial</div><div class="print-metric-val">'+fmt(s.cuota,s.mon)+'</div></div>'
-    +'<div class="print-metric"><div class="print-metric-lbl">Total a pagar</div><div class="print-metric-val">'+fmt(totP,s.mon)+'</div></div>'
-    +'<div class="print-metric"><div class="print-metric-lbl">Total intereses</div><div class="print-metric-val red">'+fmt(totI,s.mon)+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Total a pagar</div><div class="print-metric-val">'+fmt(totP,s.moneda)+'</div></div>'
+    +'<div class="print-metric"><div class="print-metric-lbl">Total intereses</div><div class="print-metric-val red">'+fmt(totI,s.moneda)+'</div></div>'
     +'</div>'
     +'<table class="print-tbl"><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead><tbody>'+filas+'</tbody></table>'
     +'<div class="print-footer">'
     +'<div class="print-footer-brand"><div class="print-footer-logo">A</div>'
     +'<div class="print-footer-txt"><strong>ABORGAMA</strong> · Gestión ambiental integral<br>© '+new Date().getFullYear()+' Aborgama · www.aborgama.com</div></div>'
-    +'<div class="print-disclaimer">Este documento es una simulación financiera.<br>No constituye oferta de crédito. TC BCU al momento del cálculo.</div>'
+    +'<div class="print-disclaimer">Simulación financiera. No constituye oferta de crédito.<br>TC BCU al momento del cálculo.</div>'
     +'</div>';
 }
 
-function verSimulacion(i){
-  var sims=JSON.parse(localStorage.getItem('abg-sims')||'[]');
-  _simActual=sims[i];
-  document.getElementById('print-doc').innerHTML=buildPrintHTML(_simActual);
+function verSimulacion(id){
+  var s = _escenariosCache.find(function(x){return x.id===id;});
+  if(!s) return;
+  _simModal = s;
+  document.getElementById('print-doc').innerHTML = buildPrintHTML(s);
   document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
-
 function cerrarModal(event){
-  if(event&&event.target!==document.getElementById('modal-overlay'))return;
+  if(event && event.target!==document.getElementById('modal-overlay')) return;
   document.getElementById('modal-overlay').classList.remove('open');
   document.body.style.overflow='';
 }
-
 function imprimirPDF(){
-  if(!_simActual) return;
-  var s=_simActual;
-  var contenido=buildPrintHTML(s);
-  var ventana=window.open('','_blank','width=900,height=700');
-  ventana.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aborgama — Amortización</title><style>'
-    +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;color:#1a1a1a;padding:32px 40px;background:#fff}'
+  if(!_simModal) return;
+  var contenido = buildPrintHTML(_simModal);
+  var v = window.open('','_blank','width=900,height=700');
+  v.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aborgama — Amortización</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;color:#1a1a1a;padding:32px 40px;background:#fff}'
     +'.print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d8a4e;margin-bottom:20px}'
-    +'.print-brand{display:flex;align-items:center;gap:12px}'
-    +'.print-logo-mark{width:42px;height:42px;background:#2d8a4e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}'
-    +'.print-brand-name{font-size:20px;font-weight:800;color:#1e6638;letter-spacing:.02em}'
-    +'.print-brand-sub{font-size:11px;color:#5c6b63;margin-top:2px}'
-    +'.print-meta{text-align:right;font-size:11px;color:#5c6b63;line-height:1.6}'
-    +'.print-title{font-size:17px;font-weight:700;color:#1e6638;margin-bottom:14px}'
-    +'.print-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}'
-    +'.print-metric{background:#e8f5ed;border:1px solid #c2d9c9;border-radius:6px;padding:11px 12px}'
-    +'.print-metric-lbl{font-size:10px;color:#5c6b63;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}'
-    +'.print-metric-val{font-size:16px;font-weight:700;font-family:"Courier New",monospace;color:#1e6638}'
-    +'.print-metric-val.red{color:#c0392b}'
-    +'.print-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}'
-    +'.print-tbl th{background:#e8f5ed;padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:#1e6638;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #c2d9c9;border-top:1px solid #c2d9c9}'
-    +'.print-tbl th:first-child{text-align:center;width:40px}'
-    +'.print-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid #d4e4d8;color:#1a1a1a;font-family:"Courier New",monospace;font-size:11px}'
-    +'.print-tbl td:first-child{text-align:center;color:#5c6b63;font-family:sans-serif}'
-    +'.print-tbl tr:nth-child(even) td{background:#f9fcfa}'
+    +'.print-brand{display:flex;align-items:center;gap:12px}.print-logo-mark{width:42px;height:42px;background:#2d8a4e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}'
+    +'.print-brand-name{font-size:20px;font-weight:800;color:#1e6638}.print-brand-sub{font-size:11px;color:#5c6b63;margin-top:2px}'
+    +'.print-meta{text-align:right;font-size:11px;color:#5c6b63;line-height:1.6}.print-title{font-size:17px;font-weight:700;color:#1e6638;margin-bottom:14px}'
+    +'.print-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}.print-metric{background:#e8f5ed;border:1px solid #c2d9c9;border-radius:6px;padding:11px 12px}'
+    +'.print-metric-lbl{font-size:10px;color:#5c6b63;margin-bottom:3px;font-weight:500;text-transform:uppercase}.print-metric-val{font-size:16px;font-weight:700;font-family:"Courier New",monospace;color:#1e6638}'
+    +'.print-metric-val.red{color:#c0392b}.print-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}'
+    +'.print-tbl th{background:#e8f5ed;padding:8px 10px;text-align:right;font-weight:700;font-size:10px;color:#1e6638;text-transform:uppercase;border-bottom:1px solid #c2d9c9;border-top:1px solid #c2d9c9}'
+    +'.print-tbl th:first-child{text-align:center;width:40px}.print-tbl td{padding:6px 10px;text-align:right;border-bottom:1px solid #d4e4d8;color:#1a1a1a;font-family:"Courier New",monospace;font-size:11px}'
+    +'.print-tbl td:first-child{text-align:center;color:#5c6b63;font-family:sans-serif}.print-tbl tr:nth-child(even) td{background:#f9fcfa}.print-tbl tr.g td{background:#fdf3e3}'
     +'.print-footer{border-top:2px solid #e8f5ed;padding-top:12px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}'
-    +'.print-footer-brand{display:flex;align-items:center;gap:8px}'
-    +'.print-footer-logo{width:24px;height:24px;background:#2d8a4e;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}'
-    +'.print-footer-txt{font-size:11px;color:#5c6b63;line-height:1.5}'
-    +'.print-footer-txt strong{color:#1e6638}'
-    +'.print-disclaimer{font-size:10px;color:#5c6b63;text-align:right;line-height:1.5}'
-    +'@media print{body{padding:16px 20px}}'
-    +'</style></head><body>'+contenido+'</body></html>');
-  ventana.document.close();
-  ventana.focus();
-  setTimeout(function(){ventana.print();},600);
+    +'.print-footer-brand{display:flex;align-items:center;gap:8px}.print-footer-logo{width:24px;height:24px;background:#2d8a4e;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}'
+    +'.print-footer-txt{font-size:11px;color:#5c6b63;line-height:1.5}.print-footer-txt strong{color:#1e6638}.print-disclaimer{font-size:10px;color:#5c6b63;text-align:right;line-height:1.5}'
+    +'@media print{body{padding:16px 20px}}</style></head><body>'+contenido+'</body></html>');
+  v.document.close(); v.focus();
+  setTimeout(function(){v.print();},600);
 }
 
-function toUYU(v,m){return m==='UYU'?v:m==='USD'?v*state.cotiz.usd:v*state.cotiz.ui;}
-
-function comparar(){
-  var dA={P:parseFloat(document.getElementById('ca-m').value)||0,tna:parseFloat(document.getElementById('ca-t').value)||0,n:parseInt(document.getElementById('ca-p').value)||0,com:parseFloat(document.getElementById('ca-com').value)||0,sys:cmp.ca.sys,mon:cmp.ca.mon};
-  var dB={P:parseFloat(document.getElementById('cb-m').value)||0,tna:parseFloat(document.getElementById('cb-t').value)||0,n:parseInt(document.getElementById('cb-p').value)||0,com:parseFloat(document.getElementById('cb-com').value)||0,sys:cmp.cb.sys,mon:cmp.cb.mon};
-  if(!dA.P||!dA.n||!dB.P||!dB.n){alert('Completá ambos préstamos.');return;}
-  var rA=calcAmort(dA.P,dA.tna,dA.n,dA.sys),rB=calcAmort(dB.P,dB.tna,dB.n,dB.sys);
-  var intA=rA.reduce(function(s,r){return s+r.int;},0),intB=rB.reduce(function(s,r){return s+r.int;},0);
-  var tirA=calcTIR(dA.P*(1-dA.com/100),rA.map(function(r){return r.cuota;}));
-  var tirB=calcTIR(dB.P*(1-dB.com/100),rB.map(function(r){return r.cuota;}));
-  var win=toUYU(intA,dA.mon)<=toUYU(intB,dB.mon)?'A':'B';
-  var diff=Math.abs(toUYU(intA,dA.mon)-toUYU(intB,dB.mon));
-  var html='<div class="compare-grid">';
-  [['A',dA,rA,intA,tirA],['B',dB,rB,intB,tirB]].forEach(function(x){
-    var lbl=x[0],d=x[1],r=x[2],inte=x[3],tir=x[4],isW=win===lbl;
-    html+='<div class="card"'+(isW?' style="border:2px solid var(--green)"':'')+'>'+
-      '<div class="card-hdr">Préstamo '+lbl+(isW?' <span class="winner-tag">✓ Menor costo</span>':'')+' </div>'+
-      '<div class="metrics">'+
-        '<div class="metric"><div class="metric-lbl">Cuota inicial</div><div class="metric-val blue">'+fmt(r[0].cuota,d.mon)+'</div></div>'+
-        '<div class="metric"><div class="metric-lbl">Total intereses</div><div class="metric-val red">'+fmt(inte,d.mon)+'</div></div>'+
-        '<div class="metric"><div class="metric-lbl">TIR anual</div><div class="metric-val">'+tir.toFixed(2)+'%</div></div>'+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--muted);margin-top:4px">Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,d.mon),'UYU')+'</strong></div>'+
-    '</div>';
+/* ══════════════════════════════════════
+   COMPARADOR DE ESCENARIOS (Firestore)
+══════════════════════════════════════ */
+function cargarEscenariosParaComparar(){
+  var selA = document.getElementById('sel-esc-a');
+  var selB = document.getElementById('sel-esc-b');
+  var opts = '<option value="">— Seleccionar —</option>' + _escenariosCache.map(function(s){
+    return '<option value="'+s.id+'">'+s.nombre+' ('+fmt(s.monto,s.moneda)+')</option>';
+  }).join('');
+  selA.innerHTML = opts;
+  selB.innerHTML = opts;
+  if(!_escenariosCache.length) cargarHistorial().then(function(){
+    var opts2 = '<option value="">— Seleccionar —</option>' + _escenariosCache.map(function(s){
+      return '<option value="'+s.id+'">'+s.nombre+' ('+fmt(s.monto,s.moneda)+')</option>';
+    }).join('');
+    selA.innerHTML = opts2; selB.innerHTML = opts2;
   });
-  html+='</div><div class="diff-box"><div class="card-hdr">Diferencia neta</div>'+
-    '<div class="diff-txt">El préstamo <strong>'+win+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'+
-    '<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Comparación al TC del BCU al momento del cálculo. Si el dólar sube, el costo real del préstamo en USD aumenta proporcionalmente.</div></div>';
-  document.getElementById('comp-result').innerHTML=html;
 }
 
+function toUYU(v,m){ return m==='UYU'?v: m==='USD'?v*state.cotiz.usd: v*state.cotiz.ui; }
+
+function compararEscenarios(){
+  var idA = document.getElementById('sel-esc-a').value;
+  var idB = document.getElementById('sel-esc-b').value;
+  if(!idA || !idB){ alert('Elegí los dos escenarios a comparar.'); return; }
+  var sA = _escenariosCache.find(function(x){return x.id===idA;});
+  var sB = _escenariosCache.find(function(x){return x.id===idB;});
+  if(!sA || !sB) return;
+
+  var rA = calcAmortTramos(sA.monto, sA.tramos);
+  var rB = calcAmortTramos(sB.monto, sB.tramos);
+  var intA = rA.reduce(function(s,r){return s+r.int;},0);
+  var intB = rB.reduce(function(s,r){return s+r.int;},0);
+  var totA = rA.reduce(function(s,r){return s+r.cuota;},0);
+  var totB = rB.reduce(function(s,r){return s+r.cuota;},0);
+  var win = toUYU(intA,sA.moneda) <= toUYU(intB,sB.moneda) ? 'A' : 'B';
+  var diff = Math.abs(toUYU(intA,sA.moneda) - toUYU(intB,sB.moneda));
+
+  var html = '<div class="compare-grid">';
+  [['A',sA,rA,intA,totA],['B',sB,rB,intB,totB]].forEach(function(x){
+    var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4], isW = win===lbl;
+    var tramosTxt = s.tramos.map(function(t,i){
+      return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':' ['+(t.sistema==='frances'?'fr':'al')+']');
+    }).join(' · ');
+    html += '<div class="card"'+(isW?' style="border:2px solid var(--green)"':'')+'>'
+      +'<div class="card-hdr">'+s.nombre+(isW?' <span class="winner-tag">✓ Menor costo</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+tramosTxt+'</div>'
+      +'<div class="metrics">'
+        +'<div class="metric"><div class="metric-lbl">Total a pagar</div><div class="metric-val blue">'+fmt(tot,s.moneda)+'</div></div>'
+        +'<div class="metric"><div class="metric-lbl">Total intereses</div><div class="metric-val red">'+fmt(inte,s.moneda)+'</div></div>'
+        +'<div class="metric"><div class="metric-lbl">Plazo total</div><div class="metric-val">'+r.length+' meses</div></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--muted)">Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong></div>'
+      +'<button class="btn-hist-ver" style="margin-top:10px" onclick="verSimulacion(\''+s.id+'\')"><i class="ti ti-table"></i> Ver amortización completa</button>'
+    +'</div>';
+  });
+  html += '</div>'
+    +'<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'
+    +'<div class="diff-txt">El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'
+    +'<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Esta comparación es ideal para ver el costo real de "cumplir el KPI" vs "no cumplirlo": el período de gracia capitaliza intereses sobre el capital antes de empezar a amortizar, así que dos tramos con la misma tasa pueden salir distinto si la gracia o el orden de los tramos cambia.</div></div>';
+
+  document.getElementById('comp-result').innerHTML = html;
+}
+
+/* ══════════════════════════════════════
+   COTIZACIONES BCU
+══════════════════════════════════════ */
 async function cargarCotiz(){
-  var proxy='https://corsproxy.io/?url=',enc=encodeURIComponent;
+  var proxy='https://corsproxy.io/?url=', enc=encodeURIComponent;
   try{
-    var r=await Promise.all([
+    var r = await Promise.all([
       fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=2222&cant=1')).then(function(x){return x.text();}),
       fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=9800&cant=1')).then(function(x){return x.text();}),
       fetch(proxy+enc('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=1111&cant=1')).then(function(x){return x.text();})
     ]);
-    var pv=function(xml,tag){var m=xml.match(new RegExp('<'+tag+'>[\\s]*([\\d\\.\\,]+)[\\s]*<\\/'+tag+'>'));return m?parseFloat(m[1].replace(',','.')):null;};
-    var usdC=pv(r[0],'COMPRA'),usdV=pv(r[0],'VENTA'),ui=pv(r[1],'VENTA'),ui2=pv(r[1],'VENTAMANANA'),eur=pv(r[2],'VENTA');
+    var pv = function(xml,tag){ var m=xml.match(new RegExp('<'+tag+'>[\\s]*([\\d\\.\\,]+)[\\s]*<\\/'+tag+'>')); return m?parseFloat(m[1].replace(',','.')):null; };
+    var usdC=pv(r[0],'COMPRA'), usdV=pv(r[0],'VENTA'), ui=pv(r[1],'VENTA'), ui2=pv(r[1],'VENTAMANANA'), eur=pv(r[2],'VENTA');
     if(usdV){
-      state.cotiz={usd:usdV,ui:ui||6.28,eur:eur||47};
-      document.getElementById('c-usd-c').textContent=usdC?'$'+usdC.toFixed(2):'—';
-      document.getElementById('c-usd-v').textContent='$'+usdV.toFixed(2);
-      document.getElementById('c-ui').textContent=ui?'$'+ui.toFixed(4):'—';
-      document.getElementById('c-ui2').textContent=ui2?'$'+ui2.toFixed(4):'—';
-      document.getElementById('c-eur').textContent=eur?'$'+eur.toFixed(2):'—';
-      document.getElementById('sdot').className='status-dot ok';
-      document.getElementById('cotiz-status').textContent='BCU actualizado';
-    }else{throw new Error();}
+      state.cotiz = {usd:usdV, ui:ui||6.28, eur:eur||47};
+      document.getElementById('c-usd-c').textContent = usdC?'$'+usdC.toFixed(2):'—';
+      document.getElementById('c-usd-v').textContent = '$'+usdV.toFixed(2);
+      document.getElementById('c-ui').textContent = ui?'$'+ui.toFixed(4):'—';
+      document.getElementById('c-ui2').textContent = ui2?'$'+ui2.toFixed(4):'—';
+      document.getElementById('c-eur').textContent = eur?'$'+eur.toFixed(2):'—';
+      document.getElementById('sdot').className = 'status-dot ok';
+      document.getElementById('cotiz-status').textContent = 'BCU actualizado';
+    } else { throw new Error(); }
   }catch(e){
-    document.getElementById('sdot').className='status-dot err';
-    document.getElementById('cotiz-status').textContent='Sin conexión BCU — valores de referencia';
-    document.getElementById('c-usd-c').textContent='$43.20';
-    document.getElementById('c-usd-v').textContent='$43.80';
-    document.getElementById('c-ui').textContent='$6.2800';
-    document.getElementById('c-ui2').textContent='$6.2840';
+    document.getElementById('sdot').className = 'status-dot err';
+    document.getElementById('cotiz-status').textContent = 'Sin conexión BCU — valores de referencia';
+    document.getElementById('c-usd-c').textContent='$43.20'; document.getElementById('c-usd-v').textContent='$43.80';
+    document.getElementById('c-ui').textContent='$6.2800'; document.getElementById('c-ui2').textContent='$6.2840';
     document.getElementById('c-eur').textContent='$47.20';
-    state.cotiz={usd:43.8,ui:6.28,eur:47.2};
+    state.cotiz = {usd:43.8, ui:6.28, eur:47.2};
   }
 }
-cargarCotiz();
 </script>
 </body>
 </html>

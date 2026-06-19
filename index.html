@@ -518,6 +518,16 @@ function calcAmortTramos(montoInicial, listaTramos){
   var rows = [];
   var nGlobal = 0;
 
+  // Meses de amortización (no-gracia) que quedan desde cada tramo en adelante,
+  // incluyendo el propio tramo. Esto es lo que usa el francés/alemán para que
+  // el saldo llegue exactamente a cero al final del ÚLTIMO tramo, no antes.
+  var mesesAmortRestantes = [];
+  var acc = 0;
+  for (var k2 = listaTramos.length - 1; k2 >= 0; k2--) {
+    if (!listaTramos[k2].gracia) acc += listaTramos[k2].meses;
+    mesesAmortRestantes[k2] = acc;
+  }
+
   for (var ti=0; ti<listaTramos.length; ti++){
     var tr = listaTramos[ti];
     var tm = tr.tasa/100/12;
@@ -533,11 +543,18 @@ function calcAmortTramos(montoInicial, listaTramos){
       continue;
     }
 
-    // Tramo de pago normal: recalcular cuota fija (francés) o amortización fija (alemán)
-    // usando el saldo actual y los meses que quedan EN ESTE TRAMO
+    // Tramo de pago: la cuota fija (francés) se calcula para que el saldo
+    // llegue a CERO al final de TODOS los meses de amortización que quedan
+    // desde este tramo en adelante (no solo los meses de este tramo).
+    // Esto evita que un tramo intermedio liquide el 100% del capital
+    // dejando los tramos siguientes en cero.
     var mesesTramo = tr.meses;
+    var mesesRestantesTotales = mesesAmortRestantes[ti]; // incluye este tramo + los que vienen después
+
     if (tr.sistema === 'frances'){
-      var cuotaFija = tm>0 ? saldo*(tm*Math.pow(1+tm,mesesTramo))/(Math.pow(1+tm,mesesTramo)-1) : saldo/mesesTramo;
+      var cuotaFija = tm>0
+        ? saldo*(tm*Math.pow(1+tm,mesesRestantesTotales))/(Math.pow(1+tm,mesesRestantesTotales)-1)
+        : saldo/mesesRestantesTotales;
       for (var m2=1; m2<=mesesTramo; m2++){
         nGlobal++;
         var interes = saldo*tm;
@@ -546,8 +563,9 @@ function calcAmortTramos(montoInicial, listaTramos){
         rows.push({ n:nGlobal, cuota:cuotaFija, cap:cap, int:interes, saldo:saldo, gracia:false });
       }
     } else {
-      // alemán: amortización fija de capital
-      var capFijo = saldo/mesesTramo;
+      // alemán: amortización fija de capital, repartida sobre TODOS los meses
+      // de amortización restantes (este tramo + los siguientes), no solo este tramo
+      var capFijo = saldo/mesesRestantesTotales;
       for (var m3=1; m3<=mesesTramo; m3++){
         nGlobal++;
         var interes2 = saldo*tm;

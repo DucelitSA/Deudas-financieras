@@ -1036,7 +1036,7 @@ function compararEscenarios(){
         'Cuota máxima: <strong>'+fmt(toUYU(cmax,s.moneda),'UYU')+'</strong> &nbsp;|&nbsp; '+
         'Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong>'+
       '</div>'+
-      '<button class="btn-hist-ver" style="margin-top:4px" onclick="verSimulacion(''+s.id+'')"><i class="ti ti-table"></i> Ver amortización completa</button>'+
+      '<button class="btn-hist-ver" style="margin-top:4px" onclick="verSimulacion(\u0027' + s.id + '\u0027)"><i class="ti ti-table"></i> Ver amortización completa</button>'+
     '</div>';
   });
   html += '</div>'+

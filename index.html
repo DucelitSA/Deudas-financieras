@@ -988,35 +988,71 @@ function compararEscenarios(){
   var intB = rB.reduce(function(s,r){return s+r.int;},0);
   var totA = rA.reduce(function(s,r){return s+r.cuota;},0);
   var totB = rB.reduce(function(s,r){return s+r.cuota;},0);
+
+  function primeraCuota(rows){ return rows.find(function(r){return !r.gracia;})||rows[0]; }
+  var c1A = primeraCuota(rA), c1B = primeraCuota(rB);
+  var cuotaA_uyu = toUYU(c1A.cuota, sA.moneda);
+  var cuotaB_uyu = toUYU(c1B.cuota, sB.moneda);
+  var cuotaA_usd = cuotaA_uyu / state.cotiz.usd;
+  var cuotaB_usd = cuotaB_uyu / state.cotiz.usd;
+  var pctA = (c1A.cuota / sA.monto) * 100;
+  var pctB = (c1B.cuota / sB.monto) * 100;
+  var cuotaMaxA = Math.max.apply(null, rA.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;}));
+  var cuotaMaxB = Math.max.apply(null, rB.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;}));
+
   var win = toUYU(intA,sA.moneda) <= toUYU(intB,sB.moneda) ? 'A' : 'B';
+  var winLiq = cuotaA_uyu <= cuotaB_uyu ? 'A' : 'B';
   var diff = Math.abs(toUYU(intA,sA.moneda) - toUYU(intB,sB.moneda));
+  var diffCuota = Math.abs(cuotaA_uyu - cuotaB_uyu);
 
   var html = '<div class="compare-grid">';
-  [['A',sA,rA,intA,totA],['B',sB,rB,intB,totB]].forEach(function(x){
-    var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4], isW = win===lbl;
+  [['A',sA,rA,intA,totA,c1A,cuotaA_uyu,cuotaA_usd,pctA,cuotaMaxA],
+   ['B',sB,rB,intB,totB,c1B,cuotaB_uyu,cuotaB_usd,pctB,cuotaMaxB]].forEach(function(x){
+    var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4];
+    var c1=x[5], cuyu=x[6], cusd=x[7], pct=x[8], cmax=x[9];
+    var isWcosto=win===lbl, isWliq=winLiq===lbl;
     var tramosTxt = s.tramos.map(function(t,i){
       return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':' ['+(t.sistema==='frances'?'fr':'al')+']');
     }).join(' · ');
-    html += '<div class="card"'+(isW?' style="border:2px solid var(--green)"':'')+'>'
-      +'<div class="card-hdr">'+s.nombre+(isW?' <span class="winner-tag">✓ Menor costo</span>':'')+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+tramosTxt+'</div>'
-      +'<div class="metrics">'
-        +'<div class="metric"><div class="metric-lbl">Total a pagar</div><div class="metric-val blue">'+fmt(tot,s.moneda)+'</div></div>'
-        +'<div class="metric"><div class="metric-lbl">Total intereses</div><div class="metric-val red">'+fmt(inte,s.moneda)+'</div></div>'
-        +'<div class="metric"><div class="metric-lbl">Plazo total</div><div class="metric-val">'+r.length+' meses</div></div>'
-      +'</div>'
-      +'<div style="font-size:11px;color:var(--muted)">Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong></div>'
-      +'<button class="btn-hist-ver" style="margin-top:10px" onclick="verSimulacion(\''+s.id+'\')"><i class="ti ti-table"></i> Ver amortización completa</button>'
-    +'</div>';
+    html += '<div class="card"'+(isWcosto?' style="border:2px solid var(--green)"':'')+'>'+
+      '<div class="card-hdr">'+s.nombre+
+        (isWcosto?' <span class="winner-tag">✓ Menor costo</span>':'')+
+        (isWliq&&!isWcosto?' <span class="winner-tag" style="background:rgba(45,138,78,.08)">✓ Menor cuota</span>':'')+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+tramosTxt+'</div>'+
+      '<div style="font-size:10px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Costo financiero</div>'+
+      '<div class="metrics" style="margin-bottom:10px">'+
+        '<div class="metric"><div class="metric-lbl">Total a pagar</div><div class="metric-val blue">'+fmt(tot,s.moneda)+'</div></div>'+
+        '<div class="metric"><div class="metric-lbl">Total intereses</div><div class="metric-val red">'+fmt(inte,s.moneda)+'</div></div>'+
+        '<div class="metric"><div class="metric-lbl">Plazo total</div><div class="metric-val">'+r.length+' meses</div></div>'+
+      '</div>'+
+      '<div style="font-size:10px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Liquidez mensual</div>'+
+      '<div class="metrics" style="margin-bottom:10px">'+
+        '<div class="metric"><div class="metric-lbl">Cuota inicial en $</div><div class="metric-val '+(isWliq?'green':'red')+'">'+fmt(cuyu,'UYU')+'</div></div>'+
+        '<div class="metric"><div class="metric-lbl">Cuota inicial en USD</div><div class="metric-val">U$S '+cusd.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>'+
+        '<div class="metric"><div class="metric-lbl">% del capital / mes</div><div class="metric-val">'+pct.toFixed(2)+'%</div></div>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+
+        'Cuota máxima: <strong>'+fmt(toUYU(cmax,s.moneda),'UYU')+'</strong> &nbsp;|&nbsp; '+
+        'Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong>'+
+      '</div>'+
+      '<button class="btn-hist-ver" style="margin-top:4px" onclick="verSimulacion(''+s.id+'')"><i class="ti ti-table"></i> Ver amortización completa</button>'+
+    '</div>';
   });
-  html += '</div>'
-    +'<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'
-    +'<div class="diff-txt">El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'
-    +'<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Esta comparación es ideal para ver el costo real de "cumplir el KPI" vs "no cumplirlo": el período de gracia capitaliza intereses sobre el capital antes de empezar a amortizar, así que dos tramos con la misma tasa pueden salir distinto si la gracia o el orden de los tramos cambia.</div></div>';
+  html += '</div>'+
+    '<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'+
+    '<div class="diff-txt">'+
+      '<strong>Costo:</strong> El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene '+fmt(diff,'UYU')+' menos en intereses totales.<br>'+
+      '<strong>Liquidez:</strong> El escenario <strong>'+(winLiq==='A'?sA.nombre:sB.nombre)+'</strong> tiene cuota mensual menor por '+fmt(diffCuota,'UYU')+
+      ' (U$S '+(diffCuota/state.cotiz.usd).toLocaleString('es-UY',{maximumFractionDigits:0})+') por mes.'+
+      (win!==winLiq ? '<br><span style="color:var(--amber)"><strong>⚠ Trade-off:</strong> el escenario de menor costo total NO es el de menor cuota mensual.</span>' : '')+
+    '</div>'+
+    '<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Cuota en USD calculada al TC actual ($'+state.cotiz.usd.toFixed(2)+'). Si el préstamo es en pesos y el dólar sube, la cuota en USD baja — pero si pagás obligaciones en dólares, esa baja es una ilusión contable.</div></div>';
 
   document.getElementById('comp-result').innerHTML = html;
   renderSensibilidad(sA, sB);
 }
+
 
 /* ══════════════════════════════════════
    COTIZACIONES BCU

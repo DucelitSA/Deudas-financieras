@@ -9,7 +9,7 @@ jobs:
   actualizar:
     runs-on: ubuntu-latest
     steps:
-      - name: Obtener cotizaciones BCU y guardar en Firestore
+      - name: Fetch BCU y guardar en Firestore
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
@@ -18,119 +18,23 @@ jobs:
           node - << 'NODEEOF'
           const https = require('https');
           const crypto = require('crypto');
-
-          function fetchBCU(moneda) {
+          function fetchSOAP(cod) {
             return new Promise((resolve, reject) => {
-              const url = 'https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=' + moneda + '&cant=1';
-              const req = https.get(url, (res) => {
-                let data = '';
-                res.on('data', c => data += c);
-                res.on('end', () => resolve(data));
+              const today = new Date().toISOString().split('T')[0];
+              const soap = '<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cot="Cotiza"><soap:Body><cot:wsbcucotizaciones.Execute><cot:Entrada><cot:Moneda><cot:item>' + cod + '</cot:item></cot:Moneda><cot:FechaDesde>' + today + '</cot:FechaDesde><cot:FechaHasta>' + today + '</cot:FechaHasta><cot:Grupo>0</cot:Grupo></cot:Entrada></cot:wsbcucotizaciones.Execute></soap:Body></soap:Envelope>';
+              const buf = Buffer.from(soap, 'utf8');
+              const req = https.request({hostname:'cotizaciones.bcu.gub.uy',path:'/wscotizaciones/servlet/awsbcucotizaciones',method:'POST',headers:{'Content-Type':'text/xml; charset=utf-8','Content-Length':buf.length,'SOAPAction':'""'}}, (res) => {
+                let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve(d));
               });
-              req.on('error', reject);
+              req.on('error',reject); req.write(buf); req.end();
             });
           }
-
           function parseTag(xml, tag) {
-            const m = xml.match(new RegExp('<' + tag + '>\\s*([\\d.,]+)\\s*<\\/' + tag + '>', 'i'));
-            if (m) return parseFloat(m[1].replace(',', '.'));
-            console.log('Tag ' + tag + ' no encontrado en: ' + xml.substring(0, 300));
+            const m = xml.match(new RegExp('<'+tag+'>\\s*([\\d.,]+)\\s*</'+tag+'>', 'i'));
+            if (m) return parseFloat(m[1].replace(',','.'));
+            console.log('Tag '+tag+' no encontrado. XML:', xml.substring(0,300));
             return 0;
           }
-
-          function getAccessToken() {
+          function getToken() {
             return new Promise((resolve, reject) => {
-              let pk = process.env.FIREBASE_PRIVATE_KEY || '';
-              pk = pk.split('\\n').join('\n');
-              console.log('PK empieza con:', pk.substring(0, 40));
-
-              const email = process.env.FIREBASE_CLIENT_EMAIL;
-              const now = Math.floor(Date.now() / 1000);
-              const hdr = Buffer.from(JSON.stringify({alg:'RS256',typ:'JWT'})).toString('base64url');
-              const pld = Buffer.from(JSON.stringify({
-                iss: email,
-                scope: 'https://www.googleapis.com/auth/datastore',
-                aud: 'https://oauth2.googleapis.com/token',
-                iat: now, exp: now + 3600
-              })).toString('base64url');
-
-              let sig;
-              try {
-                const s = crypto.createSign('sha256WithRSAEncryption');
-                s.update(hdr + '.' + pld);
-                sig = s.sign(pk, 'base64url');
-              } catch(e) {
-                return reject(new Error('Sign error: ' + e.message));
-              }
-
-              const jwt = hdr + '.' + pld + '.' + sig;
-              const body = 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt;
-
-              const req = https.request({
-                hostname: 'oauth2.googleapis.com', path: '/token', method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-              }, (res) => {
-                let d = '';
-                res.on('data', c => d += c);
-                res.on('end', () => {
-                  const j = JSON.parse(d);
-                  if (j.access_token) resolve(j.access_token);
-                  else reject(new Error('Token error: ' + d));
-                });
-              });
-              req.on('error', reject);
-              req.write(body);
-              req.end();
-            });
-          }
-
-          function saveFirestore(token, project, data) {
-            return new Promise((resolve, reject) => {
-              const body = JSON.stringify({fields:{
-                usd_compra:  {doubleValue: data.usd_compra},
-                usd_venta:   {doubleValue: data.usd_venta},
-                ui_venta:    {doubleValue: data.ui_venta},
-                ui_manana:   {doubleValue: data.ui_manana},
-                eur_venta:   {doubleValue: data.eur_venta},
-                actualizado: {stringValue: data.actualizado}
-              }});
-              const req = https.request({
-                hostname: 'firestore.googleapis.com',
-                path: '/v1/projects/' + project + '/databases/(default)/documents/config/cotizaciones',
-                method: 'PATCH',
-                headers: {
-                  'Authorization': 'Bearer ' + token,
-                  'Content-Type': 'application/json',
-                  'Content-Length': Buffer.byteLength(body)
-                }
-              }, (res) => {
-                let d = '';
-                res.on('data', c => d += c);
-                res.on('end', () => { console.log('Firestore status:', res.statusCode); resolve(); });
-              });
-              req.on('error', reject);
-              req.write(body);
-              req.end();
-            });
-          }
-
-          async function main() {
-            const [u, ui, e] = await Promise.all([fetchBCU('2222'), fetchBCU('9800'), fetchBCU('1111')]);
-            console.log('XML USD:', u.substring(0, 200));
-            const data = {
-              usd_compra: parseTag(u, 'COMPRA'),
-              usd_venta:  parseTag(u, 'VENTA'),
-              ui_venta:   parseTag(ui, 'VENTA'),
-              ui_manana:  parseTag(ui, 'VENTAMANANA'),
-              eur_venta:  parseTag(e, 'VENTA'),
-              actualizado: new Date().toISOString()
-            };
-            console.log('Cotizaciones:', JSON.stringify(data));
-            const token = await getAccessToken();
-            console.log('Token OK');
-            await saveFirestore(token, process.env.FIREBASE_PROJECT_ID, data);
-            console.log('Guardado en Firestore OK');
-          }
-
-          main().catch(e => { console.error('FATAL:', e.message); process.exit(1); });
-          NODEEOF
+              let pk = (process.env.FIREBASE_PRIVATE_KEY||'').split('\\n').join('\n');

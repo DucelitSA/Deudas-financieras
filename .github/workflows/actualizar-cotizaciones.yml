@@ -1,0 +1,128 @@
+name: Actualizar cotizaciones BCU
+
+on:
+  schedule:
+    - cron: '0 12 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener cotizaciones del BCU y guardar en Firestore
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        run: |
+          node << 'EOF'
+          const https = require('https');
+
+          function fetchBCU(moneda) {
+            return new Promise((resolve, reject) => {
+              const url = `https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=${moneda}&cant=1`;
+              https.get(url, (res) => {
+                let data = '';
+                res.on('data', c => data += c);
+                res.on('end', () => resolve(data));
+              }).on('error', reject);
+            });
+          }
+
+          function parseTag(xml, tag) {
+            const m = xml.match(new RegExp(`<${tag}>[\\s]*([\\d\\.,]+)[\\s]*<\\/${tag}>`));
+            return m ? parseFloat(m[1].replace(',', '.')) : null;
+          }
+
+          function getAccessToken() {
+            return new Promise((resolve, reject) => {
+              const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+              const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+              const now = Math.floor(Date.now() / 1000);
+              const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+              const payload = Buffer.from(JSON.stringify({
+                iss: clientEmail,
+                scope: 'https://www.googleapis.com/auth/datastore',
+                aud: 'https://oauth2.googleapis.com/token',
+                iat: now,
+                exp: now + 3600,
+              })).toString('base64url');
+              const crypto = require('crypto');
+              const sign = crypto.createSign('RSA-SHA256');
+              sign.update(`${header}.${payload}`);
+              const sig = sign.sign(privateKey, 'base64url');
+              const jwt = `${header}.${payload}.${sig}`;
+              const postData = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
+              const req = https.request({
+                hostname: 'oauth2.googleapis.com',
+                path: '/token',
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+              }, (res) => {
+                let d = '';
+                res.on('data', c => d += c);
+                res.on('end', () => {
+                  const json = JSON.parse(d);
+                  if (json.access_token) resolve(json.access_token);
+                  else reject(new Error('No access token: ' + d));
+                });
+              });
+              req.on('error', reject);
+              req.write(postData);
+              req.end();
+            });
+          }
+
+          function writeFirestore(token, projectId, data) {
+            return new Promise((resolve, reject) => {
+              const body = JSON.stringify({
+                fields: {
+                  usd_compra:  { doubleValue: data.usd_compra },
+                  usd_venta:   { doubleValue: data.usd_venta },
+                  ui_venta:    { doubleValue: data.ui_venta },
+                  ui_manana:   { doubleValue: data.ui_manana },
+                  eur_venta:   { doubleValue: data.eur_venta },
+                  actualizado: { stringValue: data.actualizado },
+                }
+              });
+              const req = https.request({
+                hostname: 'firestore.googleapis.com',
+                path: `/v1/projects/${projectId}/databases/(default)/documents/config/cotizaciones`,
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(body)
+                }
+              }, (res) => {
+                let d = '';
+                res.on('data', c => d += c);
+                res.on('end', () => { console.log('Firestore:', res.statusCode); resolve(); });
+              });
+              req.on('error', reject);
+              req.write(body);
+              req.end();
+            });
+          }
+
+          async function main() {
+            console.log('Obteniendo cotizaciones BCU...');
+            const [xmlUSD, xmlUI, xmlEUR] = await Promise.all([
+              fetchBCU('2222'), fetchBCU('9800'), fetchBCU('1111'),
+            ]);
+            const cotiz = {
+              usd_compra:  parseTag(xmlUSD, 'COMPRA'),
+              usd_venta:   parseTag(xmlUSD, 'VENTA'),
+              ui_venta:    parseTag(xmlUI,  'VENTA'),
+              ui_manana:   parseTag(xmlUI,  'VENTAMANANA'),
+              eur_venta:   parseTag(xmlEUR, 'VENTA'),
+              actualizado: new Date().toISOString(),
+            };
+            console.log('Cotizaciones:', JSON.stringify(cotiz));
+            const token = await getAccessToken();
+            await writeFirestore(token, process.env.FIREBASE_PROJECT_ID, cotiz);
+            console.log('Listo.');
+          }
+
+          main().catch(e => { console.error(e); process.exit(1); });
+          EOF

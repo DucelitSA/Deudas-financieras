@@ -17,26 +17,42 @@ jobs:
         run: |
           node << 'EOF'
           const https = require('https');
+          const crypto = require('crypto');
 
           function fetchBCU(moneda) {
             return new Promise((resolve, reject) => {
               const url = `https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=${moneda}&cant=1`;
-              https.get(url, (res) => {
+              const req = https.get(url, (res) => {
                 let data = '';
                 res.on('data', c => data += c);
                 res.on('end', () => resolve(data));
-              }).on('error', reject);
+              });
+              req.on('error', reject);
+              req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')); });
             });
           }
 
           function parseTag(xml, tag) {
-            const m = xml.match(new RegExp(`<${tag}>[\\s]*([\\d\\.,]+)[\\s]*<\\/${tag}>`));
-            return m ? parseFloat(m[1].replace(',', '.')) : null;
+            const patterns = [
+              new RegExp(`<${tag}>\\s*([\\d.,]+)\\s*<\\/${tag}>`, 'i'),
+              new RegExp(`<${tag}\\s*>\\s*([\\d.,]+)\\s*<\\/${tag}\\s*>`, 'i'),
+            ];
+            for (const p of patterns) {
+              const m = xml.match(p);
+              if (m) return parseFloat(m[1].replace(',', '.'));
+            }
+            console.log(`Tag ${tag} no encontrado. XML:`, xml.substring(0, 500));
+            return null;
           }
 
           function getAccessToken() {
             return new Promise((resolve, reject) => {
-              const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+              let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+              privateKey = privateKey.replace(/\\n/g, '\n');
+              if (!privateKey.includes('-----BEGIN')) {
+                reject(new Error('Private key no tiene formato PEM valido'));
+                return;
+              }
               const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
               const now = Math.floor(Date.now() / 1000);
               const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -47,10 +63,15 @@ jobs:
                 iat: now,
                 exp: now + 3600,
               })).toString('base64url');
-              const crypto = require('crypto');
-              const sign = crypto.createSign('RSA-SHA256');
-              sign.update(`${header}.${payload}`);
-              const sig = sign.sign(privateKey, 'base64url');
+              let sig;
+              try {
+                const sign = crypto.createSign('RSA-SHA256');
+                sign.update(`${header}.${payload}`);
+                sig = sign.sign({ key: privateKey, format: 'pem', type: 'pkcs8' }, 'base64url');
+              } catch(e) {
+                reject(new Error('Error firmando JWT: ' + e.message));
+                return;
+              }
               const jwt = `${header}.${payload}.${sig}`;
               const postData = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
               const req = https.request({
@@ -62,9 +83,11 @@ jobs:
                 let d = '';
                 res.on('data', c => d += c);
                 res.on('end', () => {
-                  const json = JSON.parse(d);
-                  if (json.access_token) resolve(json.access_token);
-                  else reject(new Error('No access token: ' + d));
+                  try {
+                    const json = JSON.parse(d);
+                    if (json.access_token) resolve(json.access_token);
+                    else reject(new Error('No access token: ' + d));
+                  } catch(e) { reject(new Error('JSON parse error: ' + d)); }
                 });
               });
               req.on('error', reject);
@@ -77,11 +100,11 @@ jobs:
             return new Promise((resolve, reject) => {
               const body = JSON.stringify({
                 fields: {
-                  usd_compra:  { doubleValue: data.usd_compra },
-                  usd_venta:   { doubleValue: data.usd_venta },
-                  ui_venta:    { doubleValue: data.ui_venta },
-                  ui_manana:   { doubleValue: data.ui_manana },
-                  eur_venta:   { doubleValue: data.eur_venta },
+                  usd_compra:  { doubleValue: data.usd_compra  || 0 },
+                  usd_venta:   { doubleValue: data.usd_venta   || 0 },
+                  ui_venta:    { doubleValue: data.ui_venta    || 0 },
+                  ui_manana:   { doubleValue: data.ui_manana   || 0 },
+                  eur_venta:   { doubleValue: data.eur_venta   || 0 },
                   actualizado: { stringValue: data.actualizado },
                 }
               });
@@ -97,7 +120,11 @@ jobs:
               }, (res) => {
                 let d = '';
                 res.on('data', c => d += c);
-                res.on('end', () => { console.log('Firestore:', res.statusCode); resolve(); });
+                res.on('end', () => {
+                  console.log('Firestore status:', res.statusCode);
+                  if (res.statusCode >= 400) console.log('Firestore error:', d);
+                  resolve();
+                });
               });
               req.on('error', reject);
               req.write(body);
@@ -110,6 +137,7 @@ jobs:
             const [xmlUSD, xmlUI, xmlEUR] = await Promise.all([
               fetchBCU('2222'), fetchBCU('9800'), fetchBCU('1111'),
             ]);
+            console.log('XML USD primeros 300 chars:', xmlUSD.substring(0, 300));
             const cotiz = {
               usd_compra:  parseTag(xmlUSD, 'COMPRA'),
               usd_venta:   parseTag(xmlUSD, 'VENTA'),
@@ -119,10 +147,12 @@ jobs:
               actualizado: new Date().toISOString(),
             };
             console.log('Cotizaciones:', JSON.stringify(cotiz));
+            console.log('Obteniendo token Firebase...');
             const token = await getAccessToken();
+            console.log('Token OK, guardando en Firestore...');
             await writeFirestore(token, process.env.FIREBASE_PROJECT_ID, cotiz);
             console.log('Listo.');
           }
 
-          main().catch(e => { console.error(e); process.exit(1); });
+          main().catch(e => { console.error('Error:', e.message); process.exit(1); });
           EOF

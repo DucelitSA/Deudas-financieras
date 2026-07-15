@@ -38,3 +38,40 @@ jobs:
           function getToken() {
             return new Promise((resolve, reject) => {
               let pk = (process.env.FIREBASE_PRIVATE_KEY||'').split('\\n').join('\n');
+              console.log('PK inicio:', pk.substring(0,27));
+              const email = process.env.FIREBASE_CLIENT_EMAIL;
+              const now = Math.floor(Date.now()/1000);
+              const h = Buffer.from(JSON.stringify({alg:'RS256',typ:'JWT'})).toString('base64url');
+              const p = Buffer.from(JSON.stringify({iss:email,sub:email,scope:'https://www.googleapis.com/auth/datastore',aud:'https://oauth2.googleapis.com/token',iat:now,exp:now+3600})).toString('base64url');
+              let sig;
+              try { const s=crypto.createSign('sha256WithRSAEncryption'); s.update(h+'.'+p); sig=s.sign(pk,'base64url'); }
+              catch(e) { return reject(new Error('Sign: '+e.message)); }
+              const jwt=h+'.'+p+'.'+sig;
+              const body='grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion='+jwt;
+              const req=https.request({hostname:'oauth2.googleapis.com',path:'/token',method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'}},(res)=>{
+                let d=''; res.on('data',c=>d+=c); res.on('end',()=>{ const j=JSON.parse(d); if(j.access_token) resolve(j.access_token); else reject(new Error('Token: '+d)); });
+              });
+              req.on('error',reject); req.write(body); req.end();
+            });
+          }
+          function saveFS(token, project, data) {
+            return new Promise((resolve, reject) => {
+              const body=JSON.stringify({fields:{usd_compra:{doubleValue:data.usd_compra},usd_venta:{doubleValue:data.usd_venta},ui_venta:{doubleValue:data.ui_venta},ui_manana:{doubleValue:data.ui_manana},eur_venta:{doubleValue:data.eur_venta},actualizado:{stringValue:data.ts}}});
+              const req=https.request({hostname:'firestore.googleapis.com',path:'/v1/projects/'+project+'/databases/(default)/documents/config/cotizaciones',method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)}},(res)=>{
+                let d=''; res.on('data',c=>d+=c); res.on('end',()=>{ console.log('Firestore:',res.statusCode,d.substring(0,100)); resolve(); });
+              });
+              req.on('error',reject); req.write(body); req.end();
+            });
+          }
+          async function main() {
+            console.log('Fetching BCU via SOAP...');
+            const [u,ui,e] = await Promise.all([fetchSOAP('2222'),fetchSOAP('9800'),fetchSOAP('1111')]);
+            console.log('USD XML:', u.substring(0,300));
+            const data={usd_compra:parseTag(u,'TCCompra'),usd_venta:parseTag(u,'TCVenta'),ui_venta:parseTag(ui,'TCVenta'),ui_manana:parseTag(ui,'TCVenta'),eur_venta:parseTag(e,'TCVenta'),ts:new Date().toISOString()};
+            console.log('Cotizaciones:', JSON.stringify(data));
+            const token=await getToken();
+            console.log('Token OK');
+            await saveFS(token,process.env.FIREBASE_PROJECT_ID,data);
+          }
+          main().catch(e=>{ console.error('FATAL:',e.message); process.exit(1); });
+          NODEEOF

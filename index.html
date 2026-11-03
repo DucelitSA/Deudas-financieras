@@ -1039,12 +1039,13 @@ function compararEscenarios(){
         +'<div class="metric"><div class="metric-lbl">Plazo total</div><div class="metric-val">'+r.length+' meses</div></div>'
       +'</div>'
       +'<div style="font-size:11px;color:var(--muted)">Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong></div>'
+      +'<div style="font-size:11px;color:var(--muted)">Total a pagar en USD: <strong>U$S '+Math.round(toUYU(tot,s.moneda)/state.cotiz.usd).toLocaleString('es-UY')+'</strong> &nbsp;|&nbsp; Intereses en USD: <strong>U$S '+Math.round(toUYU(inte,s.moneda)/state.cotiz.usd).toLocaleString('es-UY')+'</strong></div>'
       +'<button class="btn-hist-ver" style="margin-top:10px" onclick="verSimulacion(\''+s.id+'\')"><i class="ti ti-table"></i> Ver amortización completa</button>'
     +'</div>';
   });
   html += '</div>'
     +'<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'
-    +'<div class="diff-txt">El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'
+    +'<div class="diff-txt">El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales — equivalente a <strong>U$S '+Math.round(diff/state.cotiz.usd).toLocaleString('es-UY')+'</strong> al TC BCU ($'+state.cotiz.usd.toFixed(2)+').</div>'
     +'<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Esta comparación es ideal para ver el costo real de "cumplir el KPI" vs "no cumplirlo": el período de gracia capitaliza intereses sobre el capital antes de empezar a amortizar, así que dos tramos con la misma tasa pueden salir distinto si la gracia o el orden de los tramos cambia.</div></div>';
 
   document.getElementById('comp-result').innerHTML = html;
@@ -1180,13 +1181,20 @@ function descargarComparativaPDF(){
       +fila('Cuota inicial en USD', 'U$S '+Math.round(cuotaA_usd).toLocaleString('es-UY'), 'U$S '+Math.round(cuotaB_usd).toLocaleString('es-UY'), winLiq==='A', winLiq==='B')
       +fila('% del capital / mes', pctA.toFixed(2)+'%', pctB.toFixed(2)+'%', winLiq==='A', winLiq==='B')
       +fila('Cuota máxima en $', fmt(toUYU(cuotaMaxA,sA.moneda),'UYU'), fmt(toUYU(cuotaMaxB,sB.moneda),'UYU'), false, false)
+      +'<tr><td colspan="3" style="padding:5px 10px;background:#f5f7f5;font-size:10px;font-weight:700;color:#5c6b63;text-transform:uppercase;letter-spacing:.05em">RESUMEN EN USD (TC $'+tc+')</td></tr>'
+      +fila('Monto en USD', 'U$S '+Math.round(toUYU(sA.monto,sA.moneda)/state.cotiz.usd).toLocaleString('es-UY'), 'U$S '+Math.round(toUYU(sB.monto,sB.moneda)/state.cotiz.usd).toLocaleString('es-UY'), false, false)
+      +fila('Total a pagar en USD', 'U$S '+Math.round(toUYU(totA,sA.moneda)/state.cotiz.usd).toLocaleString('es-UY'), 'U$S '+Math.round(toUYU(totB,sB.moneda)/state.cotiz.usd).toLocaleString('es-UY'), win==='A', win==='B')
+      +fila('Intereses en USD', 'U$S '+Math.round(toUYU(intA,sA.moneda)/state.cotiz.usd).toLocaleString('es-UY'), 'U$S '+Math.round(toUYU(intB,sB.moneda)/state.cotiz.usd).toLocaleString('es-UY'), win==='A', win==='B')
+      +fila('Cuota inicial en USD', 'U$S '+Math.round(cuotaA_usd).toLocaleString('es-UY'), 'U$S '+Math.round(cuotaB_usd).toLocaleString('es-UY'), winLiq==='A', winLiq==='B')
+      +fila('Cuota máxima en USD', 'U$S '+Math.round(toUYU(cuotaMaxA,sA.moneda)/state.cotiz.usd).toLocaleString('es-UY'), 'U$S '+Math.round(toUYU(cuotaMaxB,sB.moneda)/state.cotiz.usd).toLocaleString('es-UY'), false, false)
     +'</tbody></table>'
 
     // DIFERENCIA NETA
     +'<h2>Diferencia neta</h2>'
     +'<div style="background:#f0fbf4;border:1px solid #c2d9c9;border-radius:6px;padding:12px;font-size:12px;line-height:1.7">'
-      +'<div>📊 <strong>Costo:</strong> '+(win==='A'?sA.nombre:sB.nombre)+' tiene '+fmt(diff,'UYU')+' menos en intereses totales.</div>'
+      +'<div>📊 <strong>Costo:</strong> '+(win==='A'?sA.nombre:sB.nombre)+' tiene '+fmt(diff,'UYU')+' menos en intereses totales (U$S '+Math.round(diff/state.cotiz.usd).toLocaleString('es-UY')+').</div>'
       +'<div>💰 <strong>Liquidez:</strong> '+(winLiq==='A'?sA.nombre:sB.nombre)+' tiene una cuota mensual menor por '+fmt(diffCuota,'UYU')+' (U$S '+Math.round(diffCuota/state.cotiz.usd).toLocaleString('es-UY')+').</div>'
+      +'<div>💵 <strong>En USD:</strong> '+(win==='A'?sA.nombre:sB.nombre)+' tiene U$S '+Math.round(Math.abs(toUYU(totA,sA.moneda)-toUYU(totB,sB.moneda))/state.cotiz.usd).toLocaleString('es-UY')+' menos en total a pagar.</div>'
       +(win!==winLiq?'<div style="color:#b5720a;margin-top:4px">⚠ <strong>Trade-off:</strong> el escenario de menor costo total NO es el de menor cuota mensual.</div>':'')
     +'</div>'
     +'<div class="warn">⚠ Cuota en USD calculada al TC BCU del '+now+' ($'+tc+'). Esta comparativa es una simulación financiera y no constituye oferta de crédito.</div>'

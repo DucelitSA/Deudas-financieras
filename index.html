@@ -1322,30 +1322,32 @@ async function fetchConProxies(urlDestino){
 
 async function cargarCotiz(){
   try{
-    var r = await Promise.all([
-      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=2222&cant=1'),
-      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=9800&cant=1'),
-      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=1111&cant=1')
-    ]);
-    var pv = function(xml,tag){ var m=xml.match(new RegExp('<'+tag+'>[\\s]*([\\d\\.\\,]+)[\\s]*<\\/'+tag+'>')); return m?parseFloat(m[1].replace(',','.')):null; };
-    var usdC=pv(r[0],'COMPRA'), usdV=pv(r[0],'VENTA'), ui=pv(r[1],'VENTA'), ui2=pv(r[1],'VENTAMANANA'), eur=pv(r[2],'VENTA');
-    if(usdV){
-      state.cotiz = {usd:usdV, ui:ui||6.28, eur:eur||47};
-      document.getElementById('c-usd-c').textContent = usdC?'$'+usdC.toFixed(2):'—';
-      document.getElementById('c-usd-v').textContent = '$'+usdV.toFixed(2);
-      document.getElementById('c-ui').textContent = ui?'$'+ui.toFixed(4):'—';
-      document.getElementById('c-ui2').textContent = ui2?'$'+ui2.toFixed(4):'—';
-      document.getElementById('c-eur').textContent = eur?'$'+eur.toFixed(2):'—';
-      document.getElementById('sdot').className = 'status-dot ok';
-      document.getElementById('cotiz-status').textContent = 'BCU actualizado';
-    } else { throw new Error(); }
+    var fb = window._fb;
+    var {getDoc} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    var snap = await getDoc(fb.doc(fb.db,'config','cotizaciones'));
+    if(snap.exists()){
+      var d = snap.data();
+      var usdV = d.usd_venta||0, usdC = d.usd_compra||0, ui = d.ui_venta||0, ui2 = d.ui_manana||0, eur = d.eur_venta||0;
+      if(usdV){
+        state.cotiz = {usd:usdV, ui:ui||6.28, eur:eur||47};
+        document.getElementById('c-usd-c').textContent = usdC?'$'+usdC.toFixed(2):'—';
+        document.getElementById('c-usd-v').textContent = '$'+usdV.toFixed(2);
+        document.getElementById('c-ui').textContent  = ui?'$'+ui.toFixed(4):'—';
+        document.getElementById('c-ui2').textContent = ui2?'$'+ui2.toFixed(4):'—';
+        document.getElementById('c-eur').textContent = eur?'$'+eur.toFixed(2):'—';
+        document.getElementById('sdot').className = 'status-dot ok';
+        document.getElementById('cotiz-status').textContent = 'BCU actualizado · '+(d.actualizado||'');
+        return;
+      }
+    }
+    throw new Error('Sin datos en Firestore');
   }catch(e){
     document.getElementById('sdot').className = 'status-dot err';
-    document.getElementById('cotiz-status').textContent = 'Sin conexión BCU — valores de referencia';
-    document.getElementById('c-usd-c').textContent='$43.20'; document.getElementById('c-usd-v').textContent='$43.80';
-    document.getElementById('c-ui').textContent='$6.2800'; document.getElementById('c-ui2').textContent='$6.2840';
-    document.getElementById('c-eur').textContent='$47.20';
-    state.cotiz = {usd:43.8, ui:6.28, eur:47.2};
+    document.getElementById('cotiz-status').textContent = 'Importá el Excel BCU para actualizar cotizaciones';
+    document.getElementById('c-usd-c').textContent='—'; document.getElementById('c-usd-v').textContent='—';
+    document.getElementById('c-ui').textContent='—'; document.getElementById('c-ui2').textContent='—';
+    document.getElementById('c-eur').textContent='—';
+    state.cotiz = {usd:0, ui:0, eur:0};
   }
 }
 </script>

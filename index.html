@@ -943,49 +943,79 @@ window._supuestos = {
 };
 
 /**
- * Calcula el total real pagado en USD para un escenario dado IPC y devaluación anuales (%).
- * Cuota real = cuota_en_UYU_del_mes / IPC_acumulado_al_mes / TC_proyectado_al_mes
- * Para préstamos en USD: la cuota en USD es fija, pero en UYU sube con el TC.
- * Cuota real en USD = cuota_nominal_USD / (1 + IPC_acum) — refleja poder adquisitivo real.
+ * Calcula los INTERESES REALES en USD para un préstamo dado IPC y devaluación anuales (%).
+ *
+ * Metodología:
+ * - Convertimos cada pago (cuota) al USD de hoy usando el IPC y el TC proyectado mes a mes.
+ * - Restamos el capital inicial en USD (que de todas formas hay que devolver).
+ * - Resultado: el costo financiero puro — cuánto te cuesta pedir prestado, en USD de hoy.
+ *
+ * Conversión por moneda:
+ *   UYU: cuotaUYU = cuota nominal; real = cuotaUYU / IPC_acum / TC_mes
+ *   USD: cuota ya está en USD; real = cuota / IPC_acum (el IPC deflacta el poder adquisitivo)
+ *   UI:  la UI sube con IPC, así que cuotaUYU = cuota_UI * UI_hoy * IPC_acum;
+ *        real = cuotaUYU / IPC_acum / TC_mes = cuota_UI * UI_hoy / TC_mes (IPC se cancela)
+ *        → préstamo en UI es inmune al IPC pero sí sensible a la devaluación FX
  */
-function calcTotalRealUSD(s, ipcAnual, devalAnual, tc0){
+function calcInteresesRealesUSD(s, ipcAnual, devalAnual, tc0){
   var rows = calcAmortTramos(s.monto, s.tramos);
-  var ipcMens  = Math.pow(1 + ipcAnual/100,  1/12) - 1;
+  var ipcMens   = Math.pow(1 + ipcAnual/100,  1/12) - 1;
   var devalMens = Math.pow(1 + devalAnual/100, 1/12) - 1;
-  var total = 0;
+  var ui0 = state.cotiz.ui || 6.69;
+  var totalRealUSD = 0;
   rows.forEach(function(r, idx){
     var mes = idx + 1;
-    var ipcAcum  = Math.pow(1 + ipcMens,   mes);
-    var tcMes    = tc0 * Math.pow(1 + devalMens, mes);
-    var cuotaUYU; // cuota en pesos en ese mes
-    if(s.moneda === 'UYU') cuotaUYU = r.cuota;
-    else if(s.moneda === 'USD') cuotaUYU = r.cuota * tcMes;
-    else cuotaUYU = r.cuota * state.cotiz.ui * ipcAcum; // UI crece con IPC
-    var cuotaRealUSD = cuotaUYU / ipcAcum / tcMes;
-    total += cuotaRealUSD;
+    var ipcAcum = Math.pow(1 + ipcMens,   mes);
+    var tcMes   = tc0 * Math.pow(1 + devalMens, mes);
+    var pagoRealUSD;
+    if(s.moneda === 'UYU'){
+      pagoRealUSD = r.cuota / ipcAcum / tcMes;
+    } else if(s.moneda === 'USD'){
+      pagoRealUSD = r.cuota / ipcAcum;
+    } else { // UI: IPC se cancela
+      pagoRealUSD = r.cuota * ui0 / tcMes;
+    }
+    totalRealUSD += pagoRealUSD;
   });
-  return total;
+  // Capital inicial en USD de hoy (sin proyección — es lo que recibiste)
+  var capitalUSD;
+  if(s.moneda === 'USD') capitalUSD = s.monto;
+  else if(s.moneda === 'UYU') capitalUSD = s.monto / tc0;
+  else capitalUSD = s.monto * ui0 / tc0; // UI
+  return totalRealUSD - capitalUSD; // intereses reales en USD de hoy
+}
+
+// Para compatibilidad interna (sensitivity table usa total real, no solo intereses)
+function calcTotalRealUSD(s, ipcAnual, devalAnual, tc0){
+  return calcInteresesRealesUSD(s, ipcAnual, devalAnual, tc0);
 }
 
 /**
- * Break-even: devaluación anual a la que ambos escenarios cuestan lo mismo en USD real.
- * Búsqueda binaria entre 0% y 50%.
+ * Break-even: devaluación anual a la que los intereses reales en USD son iguales.
+ * Solo tiene sentido cuando los préstamos son en monedas distintas Y una de ellas es USD.
+ * UI vs UYU: el break-even sigue siendo válido (UI no indexa en USD, UYU sí se deprecia).
  */
 function calcBreakEven(sA, sB, ipcAnual, tc0){
-  // Si ambos son de la misma moneda, el break-even no aplica
   if(sA.moneda === sB.moneda) return null;
-  var lo = 0, hi = 50, be = null;
+  // Calcular quién gana con deval 0 y quién con deval 30%
+  var iA0 = calcInteresesRealesUSD(sA, ipcAnual, 0, tc0);
+  var iB0 = calcInteresesRealesUSD(sB, ipcAnual, 0, tc0);
+  var iA30 = calcInteresesRealesUSD(sA, ipcAnual, 30, tc0);
+  var iB30 = calcInteresesRealesUSD(sB, ipcAnual, 30, tc0);
+  // Si no hay cruce de ganador entre 0% y 30%, no hay break-even en rango razonable
+  var diff0  = iA0  - iB0;
+  var diff30 = iA30 - iB30;
+  if(diff0 * diff30 > 0) return null; // siempre gana el mismo
+  // Búsqueda binaria
+  var lo = 0, hi = 30;
   for(var i = 0; i < 60; i++){
     var mid = (lo + hi) / 2;
-    var tA = calcTotalRealUSD(sA, ipcAnual, mid, tc0);
-    var tB = calcTotalRealUSD(sB, ipcAnual, mid, tc0);
-    if(Math.abs(tA - tB) < 100) { be = mid; break; }
-    // El que "ganaba" con deval baja y "pierde" con deval alta:
-    var tA0 = calcTotalRealUSD(sA, ipcAnual, 0, tc0);
-    var tB0 = calcTotalRealUSD(sB, ipcAnual, 0, tc0);
-    if((tA - tB) * (tA0 - tB0) < 0) hi = mid; else lo = mid;
+    var tA = calcInteresesRealesUSD(sA, ipcAnual, mid, tc0);
+    var tB = calcInteresesRealesUSD(sB, ipcAnual, mid, tc0);
+    if(Math.abs(tA - tB) < 50) return mid;
+    if((tA - tB) * diff0 < 0) hi = mid; else lo = mid;
   }
-  return be !== null ? be : (lo + hi) / 2;
+  return (lo + hi) / 2;
 }
 
 function renderSensibilidad(sA, sB){
@@ -1047,13 +1077,18 @@ function renderSensibilidad(sA, sB){
       }).join('')
     +'</div>'
 
+    // Nota metodológica
+    +'<div style="background:var(--green-pale);border-left:3px solid var(--green);padding:8px 10px;font-size:11px;color:var(--text2);margin-bottom:10px;border-radius:0 4px 4px 0">'
+      +'<strong>¿Qué se compara aquí?</strong> Los <em>intereses reales en USD</em> — no el total pagado. Se resta el capital (que de todas formas devolvés) y se deflacta cada cuota por inflación y devaluación proyectadas. Es el costo financiero puro, medido en poder de compra de hoy.'
+    +'</div>'
+
     // Tabla resumen por escenario
     +'<table style="width:100%;margin-bottom:12px"><thead><tr>'
       +'<th style="text-align:left">Escenario</th>'
       +'<th>IPC</th><th>Dep. FX</th>'
-      +'<th>'+sA.nombre+' (USD real)</th>'
-      +'<th>'+sB.nombre+' (USD real)</th>'
-      +'<th style="text-align:left">Más barato</th>'
+      +'<th>'+sA.nombre+' (intereses reales)</th>'
+      +'<th>'+sB.nombre+' (intereses reales)</th>'
+      +'<th style="text-align:left">Menor costo</th>'
     +'</tr></thead><tbody>'
     +resultados.map(function(r){
       var winA = r.totA <= r.totB;
@@ -1066,27 +1101,30 @@ function renderSensibilidad(sA, sB){
         +'<td>'+r.ipc+'%</td><td>'+r.deval+'%</td>'
         +'<td style="font-family:monospace;'+bgA+'">U$S '+Math.round(r.totA).toLocaleString('es-UY')+(winA?' ✓':'')+'</td>'
         +'<td style="font-family:monospace;'+bgB+'">U$S '+Math.round(r.totB).toLocaleString('es-UY')+(!winA?' ✓':'')+'</td>'
-        +'<td style="font-weight:700;color:var(--green-dark)">'+ganador+'</td>'
-        +'</tr>'
-        +'<tr style="font-size:10px;color:var(--muted)"><td colspan="6" style="padding:2px 8px 6px">  Diferencia: U$S '+Math.round(diff).toLocaleString('es-UY')+'</td></tr>';
+        +'<td style="font-weight:700;color:var(--green-dark)">'+ganador+'<br><span style="font-size:10px;font-weight:400;color:var(--muted)">ahorra U$S '+Math.round(diff).toLocaleString('es-UY')+'</span></td>'
+        +'</tr>';
     }).join('')
     +'</tbody></table>'
 
     // Break-even
     +(hayMixto && be !== null ?
       '<div style="background:#fdf8ec;border:1px solid #e8d5a0;border-radius:6px;padding:10px;margin-bottom:12px;font-size:12px">'
-        +'<strong>🎯 Punto de equilibrio (break-even):</strong> con IPC base '+sup.ipc.base+'%, ambos préstamos cuestan lo mismo cuando la devaluación anual del peso es <strong>'+be.toFixed(2)+'%</strong>.<br>'
-        +'<span style="color:var(--green-dark)">Si el peso se deprecia MENOS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sA.nombre:sB.nombre)+'.</span><br>'
-        +'<span style="color:var(--red)">Si se deprecia MÁS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sB.nombre:sA.nombre)+'.</span><br>'
-        +'<span style="color:var(--muted);font-size:10px">Histórico Uruguay 2015–2026: dep. promedio ~4.3%/año. Pero hay picos del 15–20% (2015, 2019, 2020). El riesgo no es el promedio — es la volatilidad.</span>'
+        +'<strong>🎯 Break-even:</strong> con IPC '+sup.ipc.base+'%, el peso tiene que depreciarse <strong>'+be.toFixed(1)+'%/año</strong> para que ambos préstamos cuesten lo mismo.<br>'
+        +'<span style="color:var(--green-dark)">Dep. &lt; '+be.toFixed(1)+'%/año → menor costo: '+(calcInteresesRealesUSD(sA,sup.ipc.base,0,tc0)<calcInteresesRealesUSD(sB,sup.ipc.base,0,tc0)?sA.nombre:sB.nombre)+'</span> &nbsp;|&nbsp; '
+        +'<span style="color:var(--red)">Dep. &gt; '+be.toFixed(1)+'%/año → menor costo: '+(calcInteresesRealesUSD(sA,sup.ipc.base,0,tc0)<calcInteresesRealesUSD(sB,sup.ipc.base,0,tc0)?sB.nombre:sA.nombre)+'</span><br>'
+        +'<span style="color:var(--muted);font-size:10px">Histórico Uruguay 2015–2026: promedio ~4.3%/año · picos 15–20% en 2015, 2019, 2020. El riesgo es la volatilidad, no el promedio.</span>'
+      +'</div>'
+    : be === null && hayMixto ?
+      '<div style="background:var(--green-pale);border:1px solid var(--border2);border-radius:6px;padding:10px;margin-bottom:12px;font-size:11px;color:var(--muted)">'
+        +'ℹ El break-even no aplica en este rango: con cualquier devaluación entre 0% y 30%/año, el mismo préstamo resulta más barato. La diferencia de tasas es determinante.'
       +'</div>'
     : '')
 
     // Tabla detallada de sensibilidad
-    +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Detalle por nivel de devaluación (IPC base '+sup.ipc.base+'%)</div>'
+    +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Intereses reales por nivel de devaluación (IPC base '+sup.ipc.base+'%)</div>'
     +'<div style="overflow-x:auto"><table style="width:100%"><thead><tr>'
       +'<th style="text-align:left">Dep. FX anual</th>'
-      +'<th>'+sA.nombre+'</th><th>'+sB.nombre+'</th>'
+      +'<th>'+sA.nombre+' (int. reales)</th><th>'+sB.nombre+' (int. reales)</th>'
       +'<th style="text-align:left">Resultado</th>'
       +'<th>Diferencia</th>'
     +'</tr></thead><tbody>'+serieRows+'</tbody></table></div>'
@@ -1371,8 +1409,8 @@ function descargarComparativaPDF(){
           +'</tr>';
       }).join('');
 
-      return '<h2>Análisis real: impacto de inflación y devaluación</h2>'
-        +'<div style="font-size:10px;color:#5c6b63;margin-bottom:10px">Supuestos: IPC opt/base/pes: '+sup.ipc.opt+'%/'+sup.ipc.base+'%/'+sup.ipc.pes+'% &nbsp;|&nbsp; Dep. FX opt/base/pes: '+sup.deval.opt+'%/'+sup.deval.base+'%/'+sup.deval.pes+'% &nbsp;|&nbsp; TC referencia: $'+tc0.toFixed(2)+'. El "costo real en USD" deflacta cada cuota mensual por IPC acumulado y por el TC proyectado — mide el esfuerzo real sobre el flujo de fondos.</div>'
+      return '<h2>Costo financiero real: ajustado por inflación y devaluación</h2>'
+        +'<div style="background:#f0fbf4;border-left:3px solid #2d8a4e;padding:7px 10px;font-size:10px;color:#3a4a3f;margin-bottom:10px;border-radius:0 4px 4px 0">Se comparan los <strong>intereses reales en USD</strong> (= total pagado − capital devuelto, deflactado por IPC y TC proyectado). El capital no es costo — lo recibís y lo devolvés; lo que importa es cuánto pagás de más.<br>Supuestos: IPC opt/base/pes: '+sup.ipc.opt+'%/'+sup.ipc.base+'%/'+sup.ipc.pes+'% · Dep. FX opt/base/pes: '+sup.deval.opt+'%/'+sup.deval.base+'%/'+sup.deval.pes+'% · TC hoy: $'+tc0.toFixed(2)+'</div>'
         // Tabla de 3 escenarios
         +'<table style="width:100%;border-collapse:collapse;margin-bottom:12px">'
           +'<thead><tr>'
@@ -1381,10 +1419,11 @@ function descargarComparativaPDF(){
             +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:center">Dep. FX</th>'
             +'<th style="background:'+(function(){var x=resultados[0];return x.totA<=x.totB?'#2d8a4e':'#1e6638'})()+';color:#fff;padding:6px 8px;font-size:10px;text-align:right">'+sA.nombre+'</th>'
             +'<th style="background:'+(function(){var x=resultados[0];return x.totB<x.totA?'#2d8a4e':'#1e6638'})()+';color:#fff;padding:6px 8px;font-size:10px;text-align:right">'+sB.nombre+'</th>'
-            +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:left">Más barato</th>'
+            +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:left">Menor costo</th>'
           +'</tr></thead><tbody>'
           +resultados.map(function(r){
             var winA = r.totA <= r.totB;
+            var diff = Math.abs(r.totA - r.totB);
             var bgA = winA ? 'background:#e8f5ed' : '';
             var bgB = !winA ? 'background:#e8f5ed' : '';
             return '<tr>'
@@ -1393,7 +1432,7 @@ function descargarComparativaPDF(){
               +'<td style="padding:6px 8px;font-size:10px;text-align:center;border-bottom:1px solid #d4e4d8">'+r.deval+'%</td>'
               +'<td style="padding:6px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #d4e4d8;'+bgA+'">U$S '+Math.round(r.totA).toLocaleString('es-UY')+(winA?' ✓':'')+'</td>'
               +'<td style="padding:6px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #d4e4d8;'+bgB+'">U$S '+Math.round(r.totB).toLocaleString('es-UY')+(!winA?' ✓':'')+'</td>'
-              +'<td style="padding:6px 8px;font-size:10px;font-weight:700;color:#1e6638;border-bottom:1px solid #d4e4d8">'+(winA?sA.nombre:sB.nombre)+'</td>'
+              +'<td style="padding:6px 8px;font-size:10px;font-weight:700;color:#1e6638;border-bottom:1px solid #d4e4d8">'+(winA?sA.nombre:sB.nombre)+'<br><span style="font-size:9px;font-weight:400;color:#5c6b63">ahorra U$S '+Math.round(diff).toLocaleString('es-UY')+'</span></td>'
             +'</tr>';
           }).join('')
           +'</tbody></table>'
@@ -1401,20 +1440,24 @@ function descargarComparativaPDF(){
         // Break-even
         +(hayMixto && be !== null ?
           '<div style="background:#fdf8ec;border:1px solid #e8d5a0;border-radius:5px;padding:9px;margin-bottom:12px;font-size:10px;line-height:1.7">'
-            +'<strong>🎯 Punto de equilibrio (break-even):</strong> con IPC base '+sup.ipc.base+'%, la devaluación anual del peso a la que ambos préstamos cuestan lo mismo en USD real es <strong>'+be.toFixed(2)+'%/año</strong>.<br>'
-            +'Si el peso se deprecia MENOS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sA.nombre:sB.nombre)+'.<br>'
-            +'Si se deprecia MÁS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sB.nombre:sA.nombre)+'.<br>'
-            +'<em>Histórico Uruguay 2015–2026: dep. promedio ~4.3%/año. Picos del 15–20% (2015, 2019, 2020). El riesgo no es el promedio — es la volatilidad.</em>'
+            +'<strong>🎯 Break-even:</strong> con IPC '+sup.ipc.base+'%, la devaluación anual del peso a la que ambos préstamos cuestan lo mismo es <strong>'+be.toFixed(1)+'%/año</strong>.<br>'
+            +'Dep. &lt; '+be.toFixed(1)+'%/año → menor costo: '+(calcInteresesRealesUSD(sA,sup.ipc.base,0,tc0)<calcInteresesRealesUSD(sB,sup.ipc.base,0,tc0)?sA.nombre:sB.nombre)+'.<br>'
+            +'Dep. &gt; '+be.toFixed(1)+'%/año → menor costo: '+(calcInteresesRealesUSD(sA,sup.ipc.base,0,tc0)<calcInteresesRealesUSD(sB,sup.ipc.base,0,tc0)?sB.nombre:sA.nombre)+'.<br>'
+            +'<em>Uruguay 2015–2026: promedio ~4.3%/año · picos 15–20% en 2015, 2019, 2020.</em>'
+          +'</div>'
+        : be === null && hayMixto ?
+          '<div style="background:#f0fbf4;border:1px solid #c2d9c9;border-radius:5px;padding:9px;margin-bottom:12px;font-size:10px">'
+            +'ℹ Break-even no aplica: con cualquier devaluación entre 0–30%/año, el mismo préstamo resulta más barato. La brecha de tasas es determinante.'
           +'</div>'
         : '')
 
         // Tabla detallada
-        +'<div style="font-size:9px;font-weight:700;color:#5c6b63;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Detalle por nivel de devaluación (IPC base '+sup.ipc.base+'%)</div>'
+        +'<div style="font-size:9px;font-weight:700;color:#5c6b63;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Intereses reales por nivel de devaluación (IPC base '+sup.ipc.base+'%)</div>'
         +'<table style="width:100%;border-collapse:collapse">'
           +'<thead><tr>'
             +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:left;border-bottom:1px solid #c2d9c9">Dep. FX anual</th>'
-            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">'+sA.nombre+' (USD real)</th>'
-            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">'+sB.nombre+' (USD real)</th>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">'+sA.nombre+' (int. reales)</th>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">'+sB.nombre+' (int. reales)</th>'
             +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:left;border-bottom:1px solid #c2d9c9">Resultado</th>'
             +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">Diferencia</th>'
           +'</tr></thead><tbody>'+serieRows+'</tbody></table>';

@@ -933,61 +933,192 @@ function descargarExcel(){
    COMPARADOR DE ESCENARIOS (Firestore)
 ══════════════════════════════════════ */
 /* ══════════════════════════════════════
-   SENSIBILIDAD POR DEVALUACIÓN PROYECTADA
+   ANÁLISIS REAL: IPC + DEVALUACIÓN + BREAK-EVEN
 ══════════════════════════════════════ */
-function calcularSerieUSD(s, devalAnualPct, tcInicial){
+
+// Supuestos por defecto (editables)
+window._supuestos = {
+  ipc:   { opt: 4.5, base: 5.5, pes: 7.5 },
+  deval: { opt: 3.0, base: 5.5, pes: 9.0 }
+};
+
+/**
+ * Calcula el total real pagado en USD para un escenario dado IPC y devaluación anuales (%).
+ * Cuota real = cuota_en_UYU_del_mes / IPC_acumulado_al_mes / TC_proyectado_al_mes
+ * Para préstamos en USD: la cuota en USD es fija, pero en UYU sube con el TC.
+ * Cuota real en USD = cuota_nominal_USD / (1 + IPC_acum) — refleja poder adquisitivo real.
+ */
+function calcTotalRealUSD(s, ipcAnual, devalAnual, tc0){
   var rows = calcAmortTramos(s.monto, s.tramos);
-  var devalMensual = Math.pow(1 + devalAnualPct/100, 1/12) - 1;
-  var totalUSD = 0;
+  var ipcMens  = Math.pow(1 + ipcAnual/100,  1/12) - 1;
+  var devalMens = Math.pow(1 + devalAnual/100, 1/12) - 1;
+  var total = 0;
   rows.forEach(function(r, idx){
-    var tcMes = tcInicial * Math.pow(1 + devalMensual, idx+1);
-    var pagoEnUSD = s.moneda === 'USD' ? r.cuota : r.cuota / tcMes;
-    totalUSD += pagoEnUSD;
+    var mes = idx + 1;
+    var ipcAcum  = Math.pow(1 + ipcMens,   mes);
+    var tcMes    = tc0 * Math.pow(1 + devalMens, mes);
+    var cuotaUYU; // cuota en pesos en ese mes
+    if(s.moneda === 'UYU') cuotaUYU = r.cuota;
+    else if(s.moneda === 'USD') cuotaUYU = r.cuota * tcMes;
+    else cuotaUYU = r.cuota * state.cotiz.ui * ipcAcum; // UI crece con IPC
+    var cuotaRealUSD = cuotaUYU / ipcAcum / tcMes;
+    total += cuotaRealUSD;
   });
-  return totalUSD;
+  return total;
 }
 
-window._devalCustom = [0, 6, 10];
+/**
+ * Break-even: devaluación anual a la que ambos escenarios cuestan lo mismo en USD real.
+ * Búsqueda binaria entre 0% y 50%.
+ */
+function calcBreakEven(sA, sB, ipcAnual, tc0){
+  // Si ambos son de la misma moneda, el break-even no aplica
+  if(sA.moneda === sB.moneda) return null;
+  var lo = 0, hi = 50, be = null;
+  for(var i = 0; i < 60; i++){
+    var mid = (lo + hi) / 2;
+    var tA = calcTotalRealUSD(sA, ipcAnual, mid, tc0);
+    var tB = calcTotalRealUSD(sB, ipcAnual, mid, tc0);
+    if(Math.abs(tA - tB) < 100) { be = mid; break; }
+    // El que "ganaba" con deval baja y "pierde" con deval alta:
+    var tA0 = calcTotalRealUSD(sA, ipcAnual, 0, tc0);
+    var tB0 = calcTotalRealUSD(sB, ipcAnual, 0, tc0);
+    if((tA - tB) * (tA0 - tB0) < 0) hi = mid; else lo = mid;
+  }
+  return be !== null ? be : (lo + hi) / 2;
+}
 
 function renderSensibilidad(sA, sB){
-  var tc0 = state.cotiz.usd;
-  var html = '<div class="diff-box" style="margin-top:14px">'
-    +'<div class="card-hdr">Sensibilidad: costo real en USD según devaluación proyectada'
-    +'<button class="btn-sm" onclick="editarSupuestosDeval()"><i class="ti ti-settings"></i> Editar supuestos</button>'
-    +'</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-bottom:12px">TC de referencia hoy: $'+tc0.toFixed(2)+'. Cada escenario aplica esa devaluación anual de forma compuesta, mes a mes, sobre cada cuota antes de convertirla a dólares.</div>'
-    +'<div id="sens-tabla"></div>'
-    +'</div>';
-  document.getElementById('comp-result').innerHTML += html;
-  pintarTablaSensibilidad(sA, sB, tc0);
-}
+  var tc0 = state.cotiz.usd || 40;
+  var sup = window._supuestos;
+  var escenarios = [
+    { lbl: '🟢 Optimista', emoji: '🟢', ipc: sup.ipc.opt,  deval: sup.deval.opt  },
+    { lbl: '🟡 Base',      emoji: '🟡', ipc: sup.ipc.base, deval: sup.deval.base },
+    { lbl: '🔴 Pesimista', emoji: '🔴', ipc: sup.ipc.pes,  deval: sup.deval.pes  }
+  ];
 
-function pintarTablaSensibilidad(sA, sB, tc0){
-  var rowsHtml = window._devalCustom.map(function(val){
-    var totalA_USD = calcularSerieUSD(sA, val, tc0);
-    var totalB_USD = calcularSerieUSD(sB, val, tc0);
-    var ganador = totalA_USD <= totalB_USD ? sA.nombre : sB.nombre;
-    var diff = Math.abs(totalA_USD - totalB_USD);
+  // Calcular totales reales
+  var resultados = escenarios.map(function(e){
+    return {
+      lbl: e.lbl,
+      ipc: e.ipc,
+      deval: e.deval,
+      totA: calcTotalRealUSD(sA, e.ipc, e.deval, tc0),
+      totB: calcTotalRealUSD(sB, e.ipc, e.deval, tc0)
+    };
+  });
+
+  // Break-even con IPC base
+  var be = calcBreakEven(sA, sB, sup.ipc.base, tc0);
+  var monedas = [sA.moneda, sB.moneda];
+  var hayMixto = monedas[0] !== monedas[1];
+
+  // Tabla de sensibilidad detallada
+  var devalSerie = [0, 2, 3, 4, 5, sup.deval.base, 7, 9, 12, 15, 20];
+  var serieRows = devalSerie.map(function(d){
+    var tA = calcTotalRealUSD(sA, sup.ipc.base, d, tc0);
+    var tB = calcTotalRealUSD(sB, sup.ipc.base, d, tc0);
+    var winA = tA <= tB;
+    var zona = be !== null ? (Math.abs(d - be) < 0.6 ? '↔ BREAK-EVEN' : (winA ? '✓ '+sA.nombre : '⚠ '+sB.nombre)) : (winA ? '✓ '+sA.nombre : '✓ '+sB.nombre);
+    var color = zona.startsWith('↔') ? 'var(--amber)' : (winA ? 'var(--green-dark)' : 'var(--red)');
     return '<tr>'
-      +'<td style="text-align:left">'+val+'% anual</td>'
-      +'<td>U$S '+Math.round(totalA_USD).toLocaleString('es-UY')+'</td>'
-      +'<td>U$S '+Math.round(totalB_USD).toLocaleString('es-UY')+'</td>'
-      +'<td style="text-align:left;color:var(--green-dark);font-weight:600">'+ganador+'</td>'
-      +'<td>U$S '+Math.round(diff).toLocaleString('es-UY')+'</td>'
+      +'<td style="text-align:left">'+d.toFixed(1)+'%'+(be !== null && Math.abs(d-be)<0.6?' ← break-even':'')+'</td>'
+      +'<td style="font-family:monospace">U$S '+Math.round(tA).toLocaleString('es-UY')+'</td>'
+      +'<td style="font-family:monospace">U$S '+Math.round(tB).toLocaleString('es-UY')+'</td>'
+      +'<td style="font-weight:700;color:'+color+'">'+zona+'</td>'
+      +'<td style="font-family:monospace">U$S '+Math.round(Math.abs(tA-tB)).toLocaleString('es-UY')+'</td>'
       +'</tr>';
   }).join('');
-  document.getElementById('sens-tabla').innerHTML =
-    '<table><thead><tr><th style="text-align:left">Devaluación</th><th>'+sA.nombre+' (USD real)</th><th>'+sB.nombre+' (USD real)</th><th style="text-align:left">Más barato</th><th>Diferencia</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>';
+
+  var html = '<div class="diff-box" style="margin-top:14px">'
+    +'<div class="card-hdr" style="display:flex;justify-content:space-between;align-items:center">'
+      +'<span><i class="ti ti-chart-line"></i> Análisis real: costo en USD ajustado por inflación y devaluación</span>'
+      +'<button class="btn-sm" onclick="editarSupuestosMacro()"><i class="ti ti-settings"></i> Editar supuestos</button>'
+    +'</div>'
+
+    // Supuestos actuales
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0;font-size:11px">'
+      +['🟢 Optimista','🟡 Base','🔴 Pesimista'].map(function(lbl,i){
+        var e = escenarios[i];
+        return '<div style="background:var(--green-pale);border:1px solid var(--border2);border-radius:5px;padding:8px">'
+          +'<div style="font-weight:700;margin-bottom:3px">'+lbl+'</div>'
+          +'<div>IPC: '+e.ipc+'% &nbsp;|&nbsp; Dep: '+e.deval+'%</div>'
+        +'</div>';
+      }).join('')
+    +'</div>'
+
+    // Tabla resumen por escenario
+    +'<table style="width:100%;margin-bottom:12px"><thead><tr>'
+      +'<th style="text-align:left">Escenario</th>'
+      +'<th>IPC</th><th>Dep. FX</th>'
+      +'<th>'+sA.nombre+' (USD real)</th>'
+      +'<th>'+sB.nombre+' (USD real)</th>'
+      +'<th style="text-align:left">Más barato</th>'
+    +'</tr></thead><tbody>'
+    +resultados.map(function(r){
+      var winA = r.totA <= r.totB;
+      var diff = Math.abs(r.totA - r.totB);
+      var ganador = winA ? sA.nombre : sB.nombre;
+      var bgA = winA ? 'background:var(--green-pale)' : '';
+      var bgB = !winA ? 'background:var(--green-pale)' : '';
+      return '<tr>'
+        +'<td style="text-align:left;font-weight:600">'+r.lbl+'</td>'
+        +'<td>'+r.ipc+'%</td><td>'+r.deval+'%</td>'
+        +'<td style="font-family:monospace;'+bgA+'">U$S '+Math.round(r.totA).toLocaleString('es-UY')+(winA?' ✓':'')+'</td>'
+        +'<td style="font-family:monospace;'+bgB+'">U$S '+Math.round(r.totB).toLocaleString('es-UY')+(!winA?' ✓':'')+'</td>'
+        +'<td style="font-weight:700;color:var(--green-dark)">'+ganador+'</td>'
+        +'</tr>'
+        +'<tr style="font-size:10px;color:var(--muted)"><td colspan="6" style="padding:2px 8px 6px">  Diferencia: U$S '+Math.round(diff).toLocaleString('es-UY')+'</td></tr>';
+    }).join('')
+    +'</tbody></table>'
+
+    // Break-even
+    +(hayMixto && be !== null ?
+      '<div style="background:#fdf8ec;border:1px solid #e8d5a0;border-radius:6px;padding:10px;margin-bottom:12px;font-size:12px">'
+        +'<strong>🎯 Punto de equilibrio (break-even):</strong> con IPC base '+sup.ipc.base+'%, ambos préstamos cuestan lo mismo cuando la devaluación anual del peso es <strong>'+be.toFixed(2)+'%</strong>.<br>'
+        +'<span style="color:var(--green-dark)">Si el peso se deprecia MENOS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sA.nombre:sB.nombre)+'.</span><br>'
+        +'<span style="color:var(--red)">Si se deprecia MÁS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sB.nombre:sA.nombre)+'.</span><br>'
+        +'<span style="color:var(--muted);font-size:10px">Histórico Uruguay 2015–2026: dep. promedio ~4.3%/año. Pero hay picos del 15–20% (2015, 2019, 2020). El riesgo no es el promedio — es la volatilidad.</span>'
+      +'</div>'
+    : '')
+
+    // Tabla detallada de sensibilidad
+    +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Detalle por nivel de devaluación (IPC base '+sup.ipc.base+'%)</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%"><thead><tr>'
+      +'<th style="text-align:left">Dep. FX anual</th>'
+      +'<th>'+sA.nombre+'</th><th>'+sB.nombre+'</th>'
+      +'<th style="text-align:left">Resultado</th>'
+      +'<th>Diferencia</th>'
+    +'</tr></thead><tbody>'+serieRows+'</tbody></table></div>'
+  +'</div>';
+
+  document.getElementById('comp-result').innerHTML += html;
 }
 
-function editarSupuestosDeval(){
-  var nuevos = prompt('Ingresá 3 tasas de devaluación anual separadas por coma (ej: 0,6,10):', window._devalCustom.join(','));
-  if(!nuevos) return;
-  var arr = nuevos.split(',').map(function(x){return parseFloat(x.trim())||0;});
-  if(arr.length!==3){ alert('Necesito exactamente 3 valores.'); return; }
-  window._devalCustom = arr;
+function editarSupuestosMacro(){
+  var s = window._supuestos;
+  var v = prompt(
+    'Supuestos macroeconómicos\n\n'+
+    'IPC optimista / base / pesimista (% anual):\n'+
+    'Devaluación optimista / base / pesimista (% anual):\n\n'+
+    'Ingresá 6 valores separados por coma:',
+    [s.ipc.opt,s.ipc.base,s.ipc.pes,s.deval.opt,s.deval.base,s.deval.pes].join(',')
+  );
+  if(!v) return;
+  var a = v.split(',').map(function(x){return parseFloat(x.trim());});
+  if(a.length!==6||a.some(isNaN)){alert('Necesito exactamente 6 valores numéricos.');return;}
+  window._supuestos = {
+    ipc:   {opt:a[0], base:a[1], pes:a[2]},
+    deval: {opt:a[3], base:a[4], pes:a[5]}
+  };
   compararEscenarios();
 }
+
+// Mantener compatibilidad con código anterior
+function calcularSerieUSD(s, devalAnualPct, tcInicial){
+  return calcTotalRealUSD(s, window._supuestos.ipc.base, devalAnualPct, tcInicial);
+}
+window._devalCustom = [0, 6, 10];
 
 function cargarEscenariosParaComparar(){
   var selA = document.getElementById('sel-esc-a');
@@ -1206,8 +1337,91 @@ function descargarComparativaPDF(){
       +'<div><h3>'+sB.nombre+'</h3><div style="font-size:11px;line-height:1.8;color:#1a1a1a">'+tramosTxt(sB)+'</div></div>'
     +'</div>'
 
+    // ANÁLISIS MACROECONÓMICO
+    +(function(){
+      var sup = window._supuestos;
+      var tc0 = state.cotiz.usd || 40;
+      var escenarios = [
+        { lbl: 'Optimista', ipc: sup.ipc.opt,  deval: sup.deval.opt  },
+        { lbl: 'Base',      ipc: sup.ipc.base, deval: sup.deval.base },
+        { lbl: 'Pesimista', ipc: sup.ipc.pes,  deval: sup.deval.pes  }
+      ];
+      var resultados = escenarios.map(function(e){
+        return { lbl:e.lbl, ipc:e.ipc, deval:e.deval,
+          totA: calcTotalRealUSD(sA, e.ipc, e.deval, tc0),
+          totB: calcTotalRealUSD(sB, e.ipc, e.deval, tc0) };
+      });
+      var be = calcBreakEven(sA, sB, sup.ipc.base, tc0);
+      var hayMixto = sA.moneda !== sB.moneda;
+
+      var devalSerie = [0, 2, 3, 4, 5, sup.deval.base, 7, 9, 12, 15, 20];
+      var serieRows = devalSerie.map(function(d){
+        var tA = calcTotalRealUSD(sA, sup.ipc.base, d, tc0);
+        var tB = calcTotalRealUSD(sB, sup.ipc.base, d, tc0);
+        var winA = tA <= tB;
+        var esBreak = be !== null && Math.abs(d-be) < 0.6;
+        var zona = esBreak ? '↔ EQUILIBRIO' : (winA ? '✓ '+sA.nombre : '⚠ '+sB.nombre);
+        var color = esBreak ? '#b5720a' : (winA ? '#1e6638' : '#c0392b');
+        return '<tr style="'+(esBreak?'background:#fdf8ec;':'')+'">'
+          +'<td style="padding:5px 8px;font-size:10px;border-bottom:1px solid #e8f0ea">'+d.toFixed(1)+'%'+(esBreak?' ← break-even':'')+'</td>'
+          +'<td style="padding:5px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #e8f0ea">U$S '+Math.round(tA).toLocaleString('es-UY')+'</td>'
+          +'<td style="padding:5px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #e8f0ea">U$S '+Math.round(tB).toLocaleString('es-UY')+'</td>'
+          +'<td style="padding:5px 8px;font-size:10px;font-weight:700;color:'+color+';border-bottom:1px solid #e8f0ea">'+zona+'</td>'
+          +'<td style="padding:5px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #e8f0ea">U$S '+Math.round(Math.abs(tA-tB)).toLocaleString('es-UY')+'</td>'
+          +'</tr>';
+      }).join('');
+
+      return '<h2>Análisis real: impacto de inflación y devaluación</h2>'
+        +'<div style="font-size:10px;color:#5c6b63;margin-bottom:10px">Supuestos: IPC opt/base/pes: '+sup.ipc.opt+'%/'+sup.ipc.base+'%/'+sup.ipc.pes+'% &nbsp;|&nbsp; Dep. FX opt/base/pes: '+sup.deval.opt+'%/'+sup.deval.base+'%/'+sup.deval.pes+'% &nbsp;|&nbsp; TC referencia: $'+tc0.toFixed(2)+'. El "costo real en USD" deflacta cada cuota mensual por IPC acumulado y por el TC proyectado — mide el esfuerzo real sobre el flujo de fondos.</div>'
+        // Tabla de 3 escenarios
+        +'<table style="width:100%;border-collapse:collapse;margin-bottom:12px">'
+          +'<thead><tr>'
+            +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:left;width:18%">Escenario</th>'
+            +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:center">IPC</th>'
+            +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:center">Dep. FX</th>'
+            +'<th style="background:'+(function(){var x=resultados[0];return x.totA<=x.totB?'#2d8a4e':'#1e6638'})()+';color:#fff;padding:6px 8px;font-size:10px;text-align:right">'+sA.nombre+'</th>'
+            +'<th style="background:'+(function(){var x=resultados[0];return x.totB<x.totA?'#2d8a4e':'#1e6638'})()+';color:#fff;padding:6px 8px;font-size:10px;text-align:right">'+sB.nombre+'</th>'
+            +'<th style="background:#1e6638;color:#fff;padding:6px 8px;font-size:10px;text-align:left">Más barato</th>'
+          +'</tr></thead><tbody>'
+          +resultados.map(function(r){
+            var winA = r.totA <= r.totB;
+            var bgA = winA ? 'background:#e8f5ed' : '';
+            var bgB = !winA ? 'background:#e8f5ed' : '';
+            return '<tr>'
+              +'<td style="padding:6px 8px;font-size:10px;font-weight:700;border-bottom:1px solid #d4e4d8">'+r.lbl+'</td>'
+              +'<td style="padding:6px 8px;font-size:10px;text-align:center;border-bottom:1px solid #d4e4d8">'+r.ipc+'%</td>'
+              +'<td style="padding:6px 8px;font-size:10px;text-align:center;border-bottom:1px solid #d4e4d8">'+r.deval+'%</td>'
+              +'<td style="padding:6px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #d4e4d8;'+bgA+'">U$S '+Math.round(r.totA).toLocaleString('es-UY')+(winA?' ✓':'')+'</td>'
+              +'<td style="padding:6px 8px;font-size:10px;font-family:Courier New,monospace;text-align:right;border-bottom:1px solid #d4e4d8;'+bgB+'">U$S '+Math.round(r.totB).toLocaleString('es-UY')+(!winA?' ✓':'')+'</td>'
+              +'<td style="padding:6px 8px;font-size:10px;font-weight:700;color:#1e6638;border-bottom:1px solid #d4e4d8">'+(winA?sA.nombre:sB.nombre)+'</td>'
+            +'</tr>';
+          }).join('')
+          +'</tbody></table>'
+
+        // Break-even
+        +(hayMixto && be !== null ?
+          '<div style="background:#fdf8ec;border:1px solid #e8d5a0;border-radius:5px;padding:9px;margin-bottom:12px;font-size:10px;line-height:1.7">'
+            +'<strong>🎯 Punto de equilibrio (break-even):</strong> con IPC base '+sup.ipc.base+'%, la devaluación anual del peso a la que ambos préstamos cuestan lo mismo en USD real es <strong>'+be.toFixed(2)+'%/año</strong>.<br>'
+            +'Si el peso se deprecia MENOS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sA.nombre:sB.nombre)+'.<br>'
+            +'Si se deprecia MÁS de '+be.toFixed(1)+'%/año → conviene el préstamo en '+(calcTotalRealUSD(sA,sup.ipc.base,0,tc0)<calcTotalRealUSD(sB,sup.ipc.base,0,tc0)?sB.nombre:sA.nombre)+'.<br>'
+            +'<em>Histórico Uruguay 2015–2026: dep. promedio ~4.3%/año. Picos del 15–20% (2015, 2019, 2020). El riesgo no es el promedio — es la volatilidad.</em>'
+          +'</div>'
+        : '')
+
+        // Tabla detallada
+        +'<div style="font-size:9px;font-weight:700;color:#5c6b63;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Detalle por nivel de devaluación (IPC base '+sup.ipc.base+'%)</div>'
+        +'<table style="width:100%;border-collapse:collapse">'
+          +'<thead><tr>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:left;border-bottom:1px solid #c2d9c9">Dep. FX anual</th>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">'+sA.nombre+' (USD real)</th>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">'+sB.nombre+' (USD real)</th>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:left;border-bottom:1px solid #c2d9c9">Resultado</th>'
+            +'<th style="background:#e8f5ed;padding:5px 8px;font-size:9px;color:#1e6638;text-align:right;border-bottom:1px solid #c2d9c9">Diferencia</th>'
+          +'</tr></thead><tbody>'+serieRows+'</tbody></table>';
+    })()
+
     // TABLAS DE AMORTIZACIÓN
-    +'<h2>'+sA.nombre+' — Cuadro de amortización</h2>'
+    +'<h2 style="margin-top:20px">'+sA.nombre+' — Cuadro de amortización</h2>'
     +tablaAmort(rA, sA.moneda)
     +'<h2 style="margin-top:20px">'+sB.nombre+' — Cuadro de amortización</h2>'
     +tablaAmort(rB, sB.moneda)

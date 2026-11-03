@@ -272,7 +272,7 @@ tr:last-child td{border-bottom:none}
             </div>
             <div class="field">
               <label id="lbl-monto">Monto inicial ($ UYU)</label>
-              <input type="number" id="f-monto" value="500000" min="0" step="1000">
+              <input type="text" id="f-monto" value="500.000" inputmode="numeric" autocomplete="off" style="font-variant-numeric:tabular-nums">
             </div>
 
             <div class="card-hdr" style="margin-top:14px">
@@ -471,6 +471,22 @@ window.onLoginOk = function(){
   renderTramos();
   cargarCotiz();
   cargarHistorial();
+  // Formato de miles en campo monto
+  var fmonto = document.getElementById('f-monto');
+  fmonto.addEventListener('input', function(){
+    var pos = this.selectionStart;
+    var raw = this.value.replace(/[^0-9]/g,'');
+    var formatted = raw ? parseInt(raw,10).toLocaleString('es-UY') : '';
+    var prevLen = this.value.length;
+    this.value = formatted;
+    // Ajustar cursor
+    var diff = formatted.length - prevLen;
+    this.setSelectionRange(pos+diff, pos+diff);
+  });
+  fmonto.addEventListener('blur', function(){
+    var raw = this.value.replace(/[^0-9]/g,'');
+    if(raw) this.value = parseInt(raw,10).toLocaleString('es-UY');
+  });
 };
 
 /* ══════════════════════════════════════
@@ -644,7 +660,7 @@ function buildTableHTML(rows, mon){
    CALCULAR
 ══════════════════════════════════════ */
 function calcular(){
-  var P = parseFloat(document.getElementById('f-monto').value)||0;
+  var P = parseFloat((document.getElementById('f-monto').value||'').replace(/\./g,'').replace(',','.'))||0;
   var nombre = document.getElementById('f-nombre').value.trim() || 'Escenario sin nombre';
   if(!P || !tramos.length){ alert('Completá el monto y al menos un tramo.'); return; }
   for (var i=0;i<tramos.length;i++){

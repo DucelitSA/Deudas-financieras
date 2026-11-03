@@ -340,46 +340,32 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
 
-      <!-- ══ COTIZACIONES ══ -->
       <div class="panel" id="p-cotiz">
-        <div class="card" style="max-width:600px">
+        <div class="card" style="max-width:560px">
           <div class="card-hdr">Importar cotizaciones desde Excel BCU</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
-            Descargá el Excel de cotizaciones desde <strong>cotizaciones.bcu.gub.uy</strong>, filtrando por USD Billete, Unidad Indexada y Euro. Luego arrastrá el archivo acá — la app lee automáticamente el último día disponible y actualiza los valores en Firestore.
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+            Descargá el Excel de cotizaciones desde <strong>cotizaciones.bcu.gub.uy</strong>, filtrando por
+            USD Billete, Unidad Indexada y Euro. Luego arrastrá el archivo acá — la app lee automáticamente
+            el último día disponible y actualiza los valores en Firestore.
+          </p>
+          <div id="bcu-dropzone" style="border:2px dashed var(--border2);border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:background .15s"
+               onclick="document.getElementById('bcu-file-input').click()"
+               ondragover="event.preventDefault();this.style.background='var(--green-pale)'"
+               ondragleave="this.style.background=''"
+               ondrop="bcuDrop(event)">
+            <i class="ti ti-file-spreadsheet" style="font-size:32px;color:var(--green);display:block;margin-bottom:8px"></i>
+            <div style="font-weight:700;color:var(--green-dark);margin-bottom:4px">Arrastrá el Excel del BCU acá</div>
+            <div style="font-size:11px;color:var(--muted)">o hacé <span style="color:var(--green);text-decoration:underline;cursor:pointer">click</span> para seleccionar el archivo</div>
           </div>
-
-          <!-- Drop zone -->
-          <div id="drop-zone" style="border:2px dashed var(--border2);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:16px" 
-               onclick="document.getElementById('file-input').click()"
-               ondragover="event.preventDefault();this.style.borderColor='var(--green)';this.style.background='var(--green-pale)'"
-               ondragleave="this.style.borderColor='var(--border2)';this.style.background=''"
-               ondrop="handleDrop(event)">
-            <i class="ti ti-file-spreadsheet" style="font-size:32px;color:var(--green-light);display:block;margin-bottom:8px"></i>
-            <div style="font-size:13px;font-weight:600;color:var(--green-dark)">Arrastrá el Excel del BCU acá</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">o hacé click para seleccionar el archivo</div>
-            <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
-          </div>
-
-          <!-- Preview de cotizaciones leídas -->
-          <div id="cotiz-preview" style="display:none">
-            <div class="card-hdr" style="margin-bottom:10px">Cotizaciones leídas del archivo</div>
-            <div class="metrics" id="cotiz-preview-metrics"></div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:12px" id="cotiz-preview-fecha"></div>
-            <button class="btn-calc" onclick="guardarCotizaciones()">
-              <i class="ti ti-cloud-upload"></i> Guardar en Firestore y actualizar app
+          <input type="file" id="bcu-file-input" accept=".xlsx,.xls" style="display:none" onchange="bcuFileSelect(this)">
+          <div id="bcu-preview" style="margin-top:14px;display:none">
+            <div class="card-hdr" style="margin-bottom:10px">Vista previa — último día disponible</div>
+            <div id="bcu-preview-vals" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
+            <button class="btn-calc" style="width:auto;padding:9px 22px" onclick="guardarCotizBCU()">
+              <i class="ti ti-cloud-upload"></i> Guardar en Firestore
             </button>
           </div>
-
-          <div id="cotiz-import-msg" style="font-size:12px;margin-top:10px;min-height:18px"></div>
-        </div>
-
-        <!-- Historial de actualizaciones -->
-        <div class="card" style="max-width:600px;margin-top:14px">
-          <div class="card-hdr">
-            <span>Última actualización guardada</span>
-            <button class="btn-sm" onclick="cargarUltimaCotiz()"><i class="ti ti-refresh"></i> Verificar</button>
-          </div>
-          <div id="cotiz-fs-info" style="font-size:12px;color:var(--muted);padding:8px 0">Cargando…</div>
+          <div id="bcu-msg" style="margin-top:10px;font-size:12px"></div>
         </div>
       </div>
 
@@ -409,7 +395,7 @@ import {
   getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, query, orderBy, serverTimestamp
+  getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -427,7 +413,7 @@ const db = getFirestore(fbApp);
 
 // Expone lo necesario al scope global (el resto de la app usa funciones clásicas)
 window._fb = {
-  auth, db, collection, addDoc, getDocs, deleteDoc, doc, setDoc, query, orderBy, serverTimestamp,
+  auth, db, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp,
   signInWithEmailAndPassword, signOut
 };
 
@@ -497,7 +483,6 @@ function showTab(t){
   });
   if (t==='hist') cargarHistorial();
   if (t==='comp') cargarEscenariosParaComparar();
-  if (t==='cotiz') cargarUltimaCotiz();
 }
 
 function selMon(el,v){
@@ -988,71 +973,330 @@ function compararEscenarios(){
   var intB = rB.reduce(function(s,r){return s+r.int;},0);
   var totA = rA.reduce(function(s,r){return s+r.cuota;},0);
   var totB = rB.reduce(function(s,r){return s+r.cuota;},0);
-
-  function primeraCuota(rows){ return rows.find(function(r){return !r.gracia;})||rows[0]; }
-  var c1A = primeraCuota(rA), c1B = primeraCuota(rB);
-  var cuotaA_uyu = toUYU(c1A.cuota, sA.moneda);
-  var cuotaB_uyu = toUYU(c1B.cuota, sB.moneda);
-  var cuotaA_usd = cuotaA_uyu / state.cotiz.usd;
-  var cuotaB_usd = cuotaB_uyu / state.cotiz.usd;
-  var pctA = (c1A.cuota / sA.monto) * 100;
-  var pctB = (c1B.cuota / sB.monto) * 100;
-  var cuotaMaxA = Math.max.apply(null, rA.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;}));
-  var cuotaMaxB = Math.max.apply(null, rB.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;}));
-
   var win = toUYU(intA,sA.moneda) <= toUYU(intB,sB.moneda) ? 'A' : 'B';
-  var winLiq = cuotaA_uyu <= cuotaB_uyu ? 'A' : 'B';
   var diff = Math.abs(toUYU(intA,sA.moneda) - toUYU(intB,sB.moneda));
-  var diffCuota = Math.abs(cuotaA_uyu - cuotaB_uyu);
 
   var html = '<div class="compare-grid">';
-  [['A',sA,rA,intA,totA,c1A,cuotaA_uyu,cuotaA_usd,pctA,cuotaMaxA],
-   ['B',sB,rB,intB,totB,c1B,cuotaB_uyu,cuotaB_usd,pctB,cuotaMaxB]].forEach(function(x){
-    var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4];
-    var c1=x[5], cuyu=x[6], cusd=x[7], pct=x[8], cmax=x[9];
-    var isWcosto=win===lbl, isWliq=winLiq===lbl;
+  [['A',sA,rA,intA,totA],['B',sB,rB,intB,totB]].forEach(function(x){
+    var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4], isW = win===lbl;
     var tramosTxt = s.tramos.map(function(t,i){
       return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':' ['+(t.sistema==='frances'?'fr':'al')+']');
     }).join(' · ');
-    html += '<div class="card"'+(isWcosto?' style="border:2px solid var(--green)"':'')+'>'+
-      '<div class="card-hdr">'+s.nombre+
-        (isWcosto?' <span class="winner-tag">✓ Menor costo</span>':'')+
-        (isWliq&&!isWcosto?' <span class="winner-tag" style="background:rgba(45,138,78,.08)">✓ Menor cuota</span>':'')+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+tramosTxt+'</div>'+
-      '<div style="font-size:10px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Costo financiero</div>'+
-      '<div class="metrics" style="margin-bottom:10px">'+
-        '<div class="metric"><div class="metric-lbl">Total a pagar</div><div class="metric-val blue">'+fmt(tot,s.moneda)+'</div></div>'+
-        '<div class="metric"><div class="metric-lbl">Total intereses</div><div class="metric-val red">'+fmt(inte,s.moneda)+'</div></div>'+
-        '<div class="metric"><div class="metric-lbl">Plazo total</div><div class="metric-val">'+r.length+' meses</div></div>'+
-      '</div>'+
-      '<div style="font-size:10px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Liquidez mensual</div>'+
-      '<div class="metrics" style="margin-bottom:10px">'+
-        '<div class="metric"><div class="metric-lbl">Cuota inicial en $</div><div class="metric-val '+(isWliq?'green':'red')+'">'+fmt(cuyu,'UYU')+'</div></div>'+
-        '<div class="metric"><div class="metric-lbl">Cuota inicial en USD</div><div class="metric-val">U$S '+cusd.toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>'+
-        '<div class="metric"><div class="metric-lbl">% del capital / mes</div><div class="metric-val">'+pct.toFixed(2)+'%</div></div>'+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+
-        'Cuota máxima: <strong>'+fmt(toUYU(cmax,s.moneda),'UYU')+'</strong> &nbsp;|&nbsp; '+
-        'Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong>'+
-      '</div>'+
-      '<button class="btn-hist-ver" style="margin-top:4px" onclick="verSimulacion(\u0027' + s.id + '\u0027)"><i class="ti ti-table"></i> Ver amortización completa</button>'+
-    '</div>';
+    html += '<div class="card"'+(isW?' style="border:2px solid var(--green)"':'')+'>'
+      +'<div class="card-hdr">'+s.nombre+(isW?' <span class="winner-tag">✓ Menor costo</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+tramosTxt+'</div>'
+      +'<div class="metrics">'
+        +'<div class="metric"><div class="metric-lbl">Total a pagar</div><div class="metric-val blue">'+fmt(tot,s.moneda)+'</div></div>'
+        +'<div class="metric"><div class="metric-lbl">Total intereses</div><div class="metric-val red">'+fmt(inte,s.moneda)+'</div></div>'
+        +'<div class="metric"><div class="metric-lbl">Plazo total</div><div class="metric-val">'+r.length+' meses</div></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--muted)">Intereses en $ equiv.: <strong>'+fmt(toUYU(inte,s.moneda),'UYU')+'</strong></div>'
+      +'<button class="btn-hist-ver" style="margin-top:10px" onclick="verSimulacion(\''+s.id+'\')"><i class="ti ti-table"></i> Ver amortización completa</button>'
+    +'</div>';
   });
-  html += '</div>'+
-    '<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'+
-    '<div class="diff-txt">'+
-      '<strong>Costo:</strong> El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene '+fmt(diff,'UYU')+' menos en intereses totales.<br>'+
-      '<strong>Liquidez:</strong> El escenario <strong>'+(winLiq==='A'?sA.nombre:sB.nombre)+'</strong> tiene cuota mensual menor por '+fmt(diffCuota,'UYU')+
-      ' (U$S '+(diffCuota/state.cotiz.usd).toLocaleString('es-UY',{maximumFractionDigits:0})+') por mes.'+
-      (win!==winLiq ? '<br><span style="color:var(--amber)"><strong>⚠ Trade-off:</strong> el escenario de menor costo total NO es el de menor cuota mensual.</span>' : '')+
-    '</div>'+
-    '<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Cuota en USD calculada al TC actual ($'+state.cotiz.usd.toFixed(2)+'). Si el préstamo es en pesos y el dólar sube, la cuota en USD baja — pero si pagás obligaciones en dólares, esa baja es una ilusión contable.</div></div>';
+  html += '</div>'
+    +'<div class="diff-box"><div class="card-hdr">Diferencia neta</div>'
+    +'<div class="diff-txt">El escenario <strong>'+(win==='A'?sA.nombre:sB.nombre)+'</strong> tiene un costo financiero menor por <strong>'+fmt(diff,'UYU')+'</strong> en intereses totales (en pesos al TC actual).</div>'
+    +'<div class="diff-warn"><i class="ti ti-alert-triangle"></i> Esta comparación es ideal para ver el costo real de "cumplir el KPI" vs "no cumplirlo": el período de gracia capitaliza intereses sobre el capital antes de empezar a amortizar, así que dos tramos con la misma tasa pueden salir distinto si la gracia o el orden de los tramos cambia.</div></div>';
 
   document.getElementById('comp-result').innerHTML = html;
   renderSensibilidad(sA, sB);
+  // Agregar botón de descarga PDF al final
+  document.getElementById('comp-result').innerHTML +=
+    '<div style="text-align:right;margin-top:14px">'
+    +'<button class="btn-imprimir" onclick="descargarComparativaPDF()">'
+    +'<i class="ti ti-file-type-pdf"></i> Descargar comparativa PDF'
+    +'</button></div>';
+  // Guardar referencia para el PDF
+  window._compPDF = {sA:sA, sB:sB};
 }
 
+/* ══════════════════════════════════════
+   PDF COMPARATIVA
+══════════════════════════════════════ */
+function descargarComparativaPDF(){
+  if(!window._compPDF) return;
+  var sA = window._compPDF.sA, sB = window._compPDF.sB;
+  var rA = calcAmortTramos(sA.monto, sA.tramos);
+  var rB = calcAmortTramos(sB.monto, sB.tramos);
+  var intA = rA.reduce(function(s,r){return s+r.int;},0);
+  var intB = rB.reduce(function(s,r){return s+r.int;},0);
+  var totA = rA.reduce(function(s,r){return s+r.cuota;},0);
+  var totB = rB.reduce(function(s,r){return s+r.cuota;},0);
+  function primeraCuota(rows){ return rows.find(function(r){return !r.gracia;})||rows[0]; }
+  var c1A=primeraCuota(rA), c1B=primeraCuota(rB);
+  var cuotaA_uyu=toUYU(c1A.cuota,sA.moneda), cuotaB_uyu=toUYU(c1B.cuota,sB.moneda);
+  var cuotaA_usd=cuotaA_uyu/state.cotiz.usd, cuotaB_usd=cuotaB_uyu/state.cotiz.usd;
+  var pctA=(c1A.cuota/sA.monto)*100, pctB=(c1B.cuota/sB.monto)*100;
+  var cuotaMaxA=Math.max.apply(null,rA.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;}));
+  var cuotaMaxB=Math.max.apply(null,rB.filter(function(r){return !r.gracia;}).map(function(r){return r.cuota;}));
+  var win=toUYU(intA,sA.moneda)<=toUYU(intB,sB.moneda)?'A':'B';
+  var winLiq=cuotaA_uyu<=cuotaB_uyu?'A':'B';
+  var diff=Math.abs(toUYU(intA,sA.moneda)-toUYU(intB,sB.moneda));
+  var diffCuota=Math.abs(cuotaA_uyu-cuotaB_uyu);
+  var now=new Date().toLocaleDateString('es-UY',{year:'numeric',month:'long',day:'numeric'});
+  var tc=state.cotiz.usd.toFixed(2);
+
+  function fila(label, valA, valB, destA, destB){
+    var bgA=destA?'background:#e8f5ed':'', bgB=destB?'background:#e8f5ed':'';
+    return '<tr>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #d4e4d8;font-size:11px;color:#1a1a1a">'+label+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #d4e4d8;font-size:11px;font-family:Courier New,monospace;text-align:right;'+bgA+'">'+valA+(destA?' ✓':'')+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #d4e4d8;font-size:11px;font-family:Courier New,monospace;text-align:right;'+bgB+'">'+valB+(destB?' ✓':'')+'</td>'
+      +'</tr>';
+  }
+
+  function tramosTxt(s){
+    return s.tramos.map(function(t,i){
+      return (i+1)+') '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' [gracia — capitaliza]':' ['+(t.sistema==='frances'?'francés':'alemán')+']');
+    }).join('<br>');
+  }
+
+  // Tabla de amortización comparativa (solo primeras 24 y últimas 6 filas para no hacer el PDF enorme)
+  function tablaAmort(rows, moneda){
+    var h='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px">'
+      +'<thead><tr>'
+      +'<th style="background:#e8f5ed;padding:5px 6px;text-align:center;border-bottom:1px solid #c2d9c9;color:#1e6638;width:32px">#</th>'
+      +'<th style="background:#e8f5ed;padding:5px 6px;text-align:right;border-bottom:1px solid #c2d9c9;color:#1e6638">Cuota</th>'
+      +'<th style="background:#e8f5ed;padding:5px 6px;text-align:right;border-bottom:1px solid #c2d9c9;color:#1e6638">Capital</th>'
+      +'<th style="background:#e8f5ed;padding:5px 6px;text-align:right;border-bottom:1px solid #c2d9c9;color:#1e6638">Interés</th>'
+      +'<th style="background:#e8f5ed;padding:5px 6px;text-align:right;border-bottom:1px solid #c2d9c9;color:#1e6638">Saldo</th>'
+      +'</tr></thead><tbody>';
+    var mostrar = rows.length <= 30 ? rows : rows.slice(0,24).concat([null]).concat(rows.slice(-6));
+    mostrar.forEach(function(r){
+      if(!r){ h+='<tr><td colspan="5" style="text-align:center;padding:4px;color:#5c6b63;font-style:italic">… filas intermedias omitidas …</td></tr>'; return; }
+      var bg = r.gracia ? 'background:#fdf3e3' : (rows.indexOf(r)%2===0?'':'background:#f9fcfa');
+      h+='<tr style="'+bg+'">'
+        +'<td style="padding:4px 6px;text-align:center;color:#5c6b63;border-bottom:1px solid #e8f0ea">'+r.n+(r.gracia?' G':'')+'</td>'
+        +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+(r.gracia?'capitaliza':fmt(r.cuota,moneda))+'</td>'
+        +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+fmt(r.cap,moneda)+'</td>'
+        +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+fmt(r.int,moneda)+'</td>'
+        +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+fmt(r.saldo,moneda)+'</td>'
+        +'</tr>';
+    });
+    return h+'</tbody></table>';
+  }
+
+  var html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+    +'<title>Aborgama — Comparativa de préstamos</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:12px;color:#1a1a1a;background:#fff;padding:28px 36px}'
+    +'h1{font-size:18px;font-weight:800;color:#1e6638}h2{font-size:13px;font-weight:700;color:#1e6638;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #c2d9c9}'
+    +'h3{font-size:11px;font-weight:700;color:#1e6638;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px}'
+    +'.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}'
+    +'.card{background:#f9fcfa;border:1px solid #d4e4d8;border-radius:6px;padding:12px}'
+    +'.card.winner{border:2px solid #2d8a4e;background:#f0fbf4}'
+    +'.badge{display:inline-block;background:#e8f5ed;color:#1e6638;border:1px solid #c2d9c9;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px}'
+    +'.metric-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e8f0ea;font-size:11px}'
+    +'.metric-row:last-child{border-bottom:none}'
+    +'.metric-label{color:#5c6b63}'
+    +'.metric-val{font-weight:700;font-family:"Courier New",monospace}'
+    +'.metric-val.green{color:#1e6638}.metric-val.red{color:#c0392b}'
+    +'.warn{background:#fdf8ec;border:1px solid #e8d5a0;border-radius:4px;padding:8px 10px;font-size:10px;color:#7a5c00;margin-top:10px;line-height:1.5}'
+    +'.footer{border-top:2px solid #e8f5ed;padding-top:10px;margin-top:20px;display:flex;justify-content:space-between;align-items:center}'
+    +'@media print{body{padding:12px 16px}.no-print{display:none}}'
+    +'</style></head><body>'
+
+    // HEADER
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #2d8a4e;margin-bottom:18px">'
+      +'<div style="display:flex;align-items:center;gap:12px">'
+        +'<div style="width:40px;height:40px;background:#2d8a4e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#fff">A</div>'
+        +'<div><div style="font-size:18px;font-weight:800;color:#1e6638">ABORGAMA</div><div style="font-size:10px;color:#5c6b63">Gestión ambiental integral</div></div>'
+      +'</div>'
+      +'<div style="text-align:right;font-size:10px;color:#5c6b63;line-height:1.6">'
+        +'<div>Comparativa de préstamos</div>'
+        +'<div>'+now+'</div>'
+        +'<div>TC BCU: $'+tc+' &nbsp;|&nbsp; www.aborgama.com</div>'
+      +'</div>'
+    +'</div>'
+
+    // CUADRO COMPARATIVO
+    +'<h2>Cuadro comparativo</h2>'
+    +'<table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr>'
+        +'<th style="background:#1e6638;color:#fff;padding:8px 10px;text-align:left;font-size:11px;width:38%">Indicador</th>'
+        +'<th style="background:'+(win==='A'?'#2d8a4e':'#1e6638')+';color:#fff;padding:8px 10px;text-align:right;font-size:11px">'+sA.nombre+(win==='A'?' ✓':'')+'</th>'
+        +'<th style="background:'+(win==='B'?'#2d8a4e':'#1e6638')+';color:#fff;padding:8px 10px;text-align:right;font-size:11px">'+sB.nombre+(win==='B'?' ✓':'')+'</th>'
+      +'</tr></thead><tbody>'
+      +'<tr><td colspan="3" style="padding:5px 10px;background:#f5f7f5;font-size:10px;font-weight:700;color:#5c6b63;text-transform:uppercase;letter-spacing:.05em">COSTO FINANCIERO</td></tr>'
+      +fila('Monto', fmt(sA.monto,sA.moneda), fmt(sB.monto,sB.moneda), false, false)
+      +fila('Moneda', sA.moneda==='UYU'?'Pesos UY':sA.moneda==='USD'?'Dólares':'UI', sB.moneda==='UYU'?'Pesos UY':sB.moneda==='USD'?'Dólares':'UI', false, false)
+      +fila('Plazo total', rA.length+' meses', rB.length+' meses', false, false)
+      +fila('Total a pagar', fmt(totA,sA.moneda), fmt(totB,sB.moneda), win==='A', win==='B')
+      +fila('Total intereses', fmt(intA,sA.moneda), fmt(intB,sB.moneda), win==='A', win==='B')
+      +fila('Intereses en $ equiv.', fmt(toUYU(intA,sA.moneda),'UYU'), fmt(toUYU(intB,sB.moneda),'UYU'), win==='A', win==='B')
+      +'<tr><td colspan="3" style="padding:5px 10px;background:#f5f7f5;font-size:10px;font-weight:700;color:#5c6b63;text-transform:uppercase;letter-spacing:.05em">LIQUIDEZ MENSUAL</td></tr>'
+      +fila('Cuota inicial (moneda original)', fmt(c1A.cuota,sA.moneda), fmt(c1B.cuota,sB.moneda), false, false)
+      +fila('Cuota inicial en pesos', fmt(cuotaA_uyu,'UYU'), fmt(cuotaB_uyu,'UYU'), winLiq==='A', winLiq==='B')
+      +fila('Cuota inicial en USD', 'U$S '+Math.round(cuotaA_usd).toLocaleString('es-UY'), 'U$S '+Math.round(cuotaB_usd).toLocaleString('es-UY'), winLiq==='A', winLiq==='B')
+      +fila('% del capital / mes', pctA.toFixed(2)+'%', pctB.toFixed(2)+'%', winLiq==='A', winLiq==='B')
+      +fila('Cuota máxima en $', fmt(toUYU(cuotaMaxA,sA.moneda),'UYU'), fmt(toUYU(cuotaMaxB,sB.moneda),'UYU'), false, false)
+    +'</tbody></table>'
+
+    // DIFERENCIA NETA
+    +'<h2>Diferencia neta</h2>'
+    +'<div style="background:#f0fbf4;border:1px solid #c2d9c9;border-radius:6px;padding:12px;font-size:12px;line-height:1.7">'
+      +'<div>📊 <strong>Costo:</strong> '+(win==='A'?sA.nombre:sB.nombre)+' tiene '+fmt(diff,'UYU')+' menos en intereses totales.</div>'
+      +'<div>💰 <strong>Liquidez:</strong> '+(winLiq==='A'?sA.nombre:sB.nombre)+' tiene una cuota mensual menor por '+fmt(diffCuota,'UYU')+' (U$S '+Math.round(diffCuota/state.cotiz.usd).toLocaleString('es-UY')+').</div>'
+      +(win!==winLiq?'<div style="color:#b5720a;margin-top:4px">⚠ <strong>Trade-off:</strong> el escenario de menor costo total NO es el de menor cuota mensual.</div>':'')
+    +'</div>'
+    +'<div class="warn">⚠ Cuota en USD calculada al TC BCU del '+now+' ($'+tc+'). Esta comparativa es una simulación financiera y no constituye oferta de crédito.</div>'
+
+    // ESTRUCTURA DE TRAMOS
+    +'<h2>Estructura de tramos</h2>'
+    +'<div class="grid2">'
+      +'<div><h3>'+sA.nombre+'</h3><div style="font-size:11px;line-height:1.8;color:#1a1a1a">'+tramosTxt(sA)+'</div></div>'
+      +'<div><h3>'+sB.nombre+'</h3><div style="font-size:11px;line-height:1.8;color:#1a1a1a">'+tramosTxt(sB)+'</div></div>'
+    +'</div>'
+
+    // TABLAS DE AMORTIZACIÓN
+    +'<h2>'+sA.nombre+' — Cuadro de amortización</h2>'
+    +tablaAmort(rA, sA.moneda)
+    +'<h2 style="margin-top:20px">'+sB.nombre+' — Cuadro de amortización</h2>'
+    +tablaAmort(rB, sB.moneda)
+
+    // FOOTER
+    +'<div class="footer">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div style="width:22px;height:22px;background:#2d8a4e;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff">A</div>'
+        +'<div style="font-size:10px;color:#5c6b63"><strong style="color:#1e6638">ABORGAMA</strong> · Gestión ambiental integral<br>© '+new Date().getFullYear()+' Aborgama · www.aborgama.com</div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:#5c6b63;text-align:right">Simulación financiera · No constituye oferta de crédito<br>Generado: '+now+'</div>'
+    +'</div>'
+    +'</body></html>';
+
+  var v = window.open('','_blank','width=1000,height=750');
+  v.document.write(html);
+  v.document.close();
+  v.focus();
+  setTimeout(function(){ v.print(); }, 700);
+}
+
+/* ══════════════════════════════════════
+   IMPORTAR EXCEL BCU
+══════════════════════════════════════ */
+var _bcuData = null;
+
+function bcuDrop(e){
+  e.preventDefault();
+  document.getElementById('bcu-dropzone').style.background='';
+  var f = e.dataTransfer.files[0];
+  if(f) procesarArchivoBCU(f);
+}
+
+function bcuFileSelect(input){
+  var f = input.files[0];
+  if(f) procesarArchivoBCU(f);
+  input.value='';
+}
+
+function procesarArchivoBCU(file){
+  var msg = document.getElementById('bcu-msg');
+  msg.style.color='var(--muted)'; msg.textContent='Leyendo archivo…';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'dd/mm/yyyy'});
+
+      // Buscar las filas por nombre de moneda — flexible para diferentes formatos BCU
+      function lastVal(keyword, colVenta, colCompra){
+        var lastRow = null;
+        for(var i=1;i<rows.length;i++){
+          var mon = (rows[i][0]||'').toString().toUpperCase();
+          if(mon.indexOf(keyword)>=0) lastRow=rows[i];
+        }
+        return lastRow;
+      }
+
+      // USD: "DLS. USA BILLETE" o "DLS.USA BILLETE"
+      var rowUSD = lastVal('DLS');
+      // UI: "UNIDAD INDEXADA"
+      var rowUI  = lastVal('UNIDAD INDEXADA') || lastVal('INDEXADA');
+      // EUR: "EURO" o "EUR"
+      var rowEUR = lastVal('EURO') || lastVal('EUR');
+
+      if(!rowUSD){ msg.style.color='var(--red)'; msg.textContent='No se encontraron datos de USD. Verificá que el archivo sea el correcto.'; return; }
+      if(!rowUI)  { msg.style.color='var(--amber)'; msg.textContent='Advertencia: no se encontró Unidad Indexada en el archivo.'; }
+
+      function parseNum(s){ if(!s&&s!==0) return null; return parseFloat((s+'').replace(',','.').replace(/[^0-9.]/g,''))||null; }
+
+      // Columnas: 0=Moneda, 1=Fecha, 2=Venta, 3=Compra
+      _bcuData = {
+        usd_compra: parseNum(rowUSD[3]) || parseNum(rowUSD[2]),
+        usd_venta:  parseNum(rowUSD[2]),
+        ui_venta:   rowUI  ? parseNum(rowUI[2])  : null,
+        ui_manana:  rowUI  ? parseNum(rowUI[2])  : null, // BCU Excel no trae mañana, usar mismo valor
+        eur_venta:  rowEUR ? parseNum(rowEUR[2]) : null,
+        actualizado: rowUSD[1] ? rowUSD[1].toString() : new Date().toLocaleDateString('es-UY')
+      };
+
+      // Preview
+      var pvDiv = document.getElementById('bcu-preview-vals');
+      pvDiv.innerHTML =
+        '<div style="background:var(--green-pale);border:1px solid var(--border2);border-radius:6px;padding:10px">'
+          +'<div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:4px">USD Billete</div>'
+          +'<div style="font-family:monospace;font-weight:700;color:var(--green-dark)">Compra: $'+(_bcuData.usd_compra||'?')+'</div>'
+          +'<div style="font-family:monospace;font-weight:700;color:var(--green-dark)">Venta: $'+(_bcuData.usd_venta||'?')+'</div>'
+        +'</div>'
+        +'<div style="background:var(--green-pale);border:1px solid var(--border2);border-radius:6px;padding:10px">'
+          +'<div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:4px">Unidad Indexada</div>'
+          +'<div style="font-family:monospace;font-weight:700;color:var(--green-dark)">'+(_bcuData.ui_venta?'$'+_bcuData.ui_venta:'No encontrada')+'</div>'
+        +'</div>'
+        +'<div style="background:var(--green-pale);border:1px solid var(--border2);border-radius:6px;padding:10px">'
+          +'<div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:4px">Euro</div>'
+          +'<div style="font-family:monospace;font-weight:700;color:var(--green-dark)">'+(_bcuData.eur_venta?'$'+_bcuData.eur_venta:'No encontrado')+'</div>'
+        +'</div>'
+        +'<div style="background:var(--green-pale);border:1px solid var(--border2);border-radius:6px;padding:10px">'
+          +'<div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:4px">Fecha datos</div>'
+          +'<div style="font-family:monospace;font-weight:700;color:var(--green-dark)">'+_bcuData.actualizado+'</div>'
+        +'</div>';
+
+      document.getElementById('bcu-preview').style.display='block';
+      msg.textContent='';
+    } catch(err){
+      msg.style.color='var(--red)'; msg.textContent='Error al leer el archivo: '+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function guardarCotizBCU(){
+  if(!_bcuData){ return; }
+  var msg = document.getElementById('bcu-msg');
+  msg.style.color='var(--muted)'; msg.textContent='Guardando en Firestore…';
+  try{
+    var fb = window._fb;
+    var docRef = fb.doc(fb.db,'config','cotizaciones');
+    var {setDoc} = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    await setDoc(docRef,{
+      usd_compra:  _bcuData.usd_compra  || 0,
+      usd_venta:   _bcuData.usd_venta   || 0,
+      ui_venta:    _bcuData.ui_venta    || 0,
+      ui_manana:   _bcuData.ui_manana   || 0,
+      eur_venta:   _bcuData.eur_venta   || 0,
+      actualizado: _bcuData.actualizado
+    });
+    // Actualizar topbar inmediatamente
+    if(_bcuData.usd_venta){
+      state.cotiz = {usd:_bcuData.usd_venta, ui:_bcuData.ui_venta||6.28, eur:_bcuData.eur_venta||47};
+      document.getElementById('c-usd-c').textContent = _bcuData.usd_compra?'$'+_bcuData.usd_compra.toFixed(2):'—';
+      document.getElementById('c-usd-v').textContent = '$'+_bcuData.usd_venta.toFixed(2);
+      document.getElementById('c-ui').textContent  = _bcuData.ui_venta?'$'+_bcuData.ui_venta.toFixed(4):'—';
+      document.getElementById('c-ui2').textContent = _bcuData.ui_manana?'$'+_bcuData.ui_manana.toFixed(4):'—';
+      document.getElementById('c-eur').textContent = _bcuData.eur_venta?'$'+_bcuData.eur_venta.toFixed(2):'—';
+      document.getElementById('sdot').className='status-dot ok';
+      document.getElementById('cotiz-status').textContent='BCU actualizado · '+_bcuData.actualizado;
+    }
+    msg.style.color='var(--green-dark)'; msg.textContent='✓ Cotizaciones guardadas correctamente en Firestore.';
+    _bcuData=null;
+    document.getElementById('bcu-preview').style.display='none';
+  }catch(err){
+    msg.style.color='var(--red)'; msg.textContent='Error al guardar: '+err.message;
+  }
+}
 
 /* ══════════════════════════════════════
    COTIZACIONES BCU
@@ -1076,169 +1320,32 @@ async function fetchConProxies(urlDestino){
   throw new Error('Todos los proxies fallaron');
 }
 
-/* ══════════════════════════════════════
-   COTIZACIONES — LEER DESDE FIRESTORE
-══════════════════════════════════════ */
 async function cargarCotiz(){
   try{
-    var fb = window._fb;
-    var docSnap = await fb.getDocs(fb.collection(fb.db, 'config'));
-    var data = null;
-    docSnap.forEach(function(d){ if(d.id==='cotizaciones') data=d.data(); });
-    if(data && data.usd_venta){
-      state.cotiz = {usd: data.usd_venta, ui: data.ui_venta||6.28, eur: data.eur_venta||47};
-      document.getElementById('c-usd-c').textContent = data.usd_compra ? '$'+data.usd_compra.toFixed(2) : '—';
-      document.getElementById('c-usd-v').textContent = '$'+data.usd_venta.toFixed(2);
-      document.getElementById('c-ui').textContent = data.ui_venta ? '$'+data.ui_venta.toFixed(4) : '—';
-      document.getElementById('c-ui2').textContent = data.ui_venta ? '$'+data.ui_venta.toFixed(4) : '—';
-      document.getElementById('c-eur').textContent = data.eur_venta ? '$'+data.eur_venta.toFixed(2) : '—';
+    var r = await Promise.all([
+      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=2222&cant=1'),
+      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=9800&cant=1'),
+      fetchConProxies('https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/wsbcucotizaciones?moneda=1111&cant=1')
+    ]);
+    var pv = function(xml,tag){ var m=xml.match(new RegExp('<'+tag+'>[\\s]*([\\d\\.\\,]+)[\\s]*<\\/'+tag+'>')); return m?parseFloat(m[1].replace(',','.')):null; };
+    var usdC=pv(r[0],'COMPRA'), usdV=pv(r[0],'VENTA'), ui=pv(r[1],'VENTA'), ui2=pv(r[1],'VENTAMANANA'), eur=pv(r[2],'VENTA');
+    if(usdV){
+      state.cotiz = {usd:usdV, ui:ui||6.28, eur:eur||47};
+      document.getElementById('c-usd-c').textContent = usdC?'$'+usdC.toFixed(2):'—';
+      document.getElementById('c-usd-v').textContent = '$'+usdV.toFixed(2);
+      document.getElementById('c-ui').textContent = ui?'$'+ui.toFixed(4):'—';
+      document.getElementById('c-ui2').textContent = ui2?'$'+ui2.toFixed(4):'—';
+      document.getElementById('c-eur').textContent = eur?'$'+eur.toFixed(2):'—';
       document.getElementById('sdot').className = 'status-dot ok';
-      var fecha = data.actualizado ? ' · ' + new Date(data.actualizado).toLocaleDateString('es-UY') : '';
-      document.getElementById('cotiz-status').textContent = 'BCU actualizado' + fecha;
-    } else { throw new Error('sin datos'); }
-  } catch(e){
+      document.getElementById('cotiz-status').textContent = 'BCU actualizado';
+    } else { throw new Error(); }
+  }catch(e){
     document.getElementById('sdot').className = 'status-dot err';
-    document.getElementById('cotiz-status').textContent = 'Sin cotizaciones — importá el Excel del BCU';
-    document.getElementById('c-usd-c').textContent='—'; document.getElementById('c-usd-v').textContent='—';
-    document.getElementById('c-ui').textContent='—'; document.getElementById('c-ui2').textContent='—';
-    document.getElementById('c-eur').textContent='—';
-    state.cotiz = {usd:40.18, ui:6.6166, eur:46};
-  }
-}
-
-/* ══════════════════════════════════════
-   IMPORTAR EXCEL BCU
-══════════════════════════════════════ */
-var _cotizLeidas = null;
-
-function handleDrop(event){
-  event.preventDefault();
-  var dz = document.getElementById('drop-zone');
-  dz.style.borderColor='var(--border2)'; dz.style.background='';
-  var file = event.dataTransfer.files[0];
-  if(file) handleFile(file);
-}
-
-function handleFile(file){
-  if(!file || (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls'))){
-    setImportMsg('Por favor subí un archivo .xlsx o .xls del BCU.', 'red');
-    return;
-  }
-  setImportMsg('Leyendo archivo…', 'muted');
-  var reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      var data = new Uint8Array(e.target.result);
-      var wb = XLSX.read(data, {type:'array'});
-      var ws = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, {header:1});
-
-      // Encontrar la última fecha disponible en el archivo
-      var fechas = [];
-      rows.forEach(function(r){
-        if(r[1] && typeof r[1]==='string' && r[1].match(/\d{2}\/\d{2}\/\d{4}/)) fechas.push(r[1]);
-        else if(r[1] instanceof Date) fechas.push(r[1].toLocaleDateString('es-UY'));
-      });
-      var ultimaFecha = fechas.sort().pop();
-
-      // Extraer valores del último día para USD BILLETE, UNIDAD INDEXADA y EURO
-      var usdV=null, usdC=null, uiV=null, eurV=null;
-      rows.forEach(function(r){
-        var moneda = (r[0]||'').toString().toUpperCase();
-        var fecha  = r[1];
-        var venta  = typeof r[2]==='number' ? r[2] : parseFloat((r[2]||'').toString().replace(',','.'));
-        var compra = typeof r[3]==='number' ? r[3] : parseFloat((r[3]||'').toString().replace(',','.'));
-        // Normalizar fecha
-        var fStr = fecha instanceof Date ? fecha.toLocaleDateString('es-UY') : (fecha||'').toString();
-        if(fStr !== ultimaFecha) return;
-        if(moneda.includes('DLS') && moneda.includes('BILLETE') && !moneda.includes('PROMED')){
-          usdV = venta; usdC = compra;
-        }
-        if(moneda.includes('UNIDAD INDEXADA')){ uiV = venta; }
-        if(moneda.includes('EURO') && moneda.includes('BILLETE')){ eurV = venta; }
-      });
-
-      if(!usdV){
-        setImportMsg('No se encontraron datos de USD. Verificá que el archivo sea el correcto.', 'red');
-        return;
-      }
-
-      _cotizLeidas = {
-        usd_compra: usdC||usdV, usd_venta: usdV,
-        ui_venta: uiV||0, ui_manana: uiV||0,
-        eur_venta: eurV||0,
-        actualizado: new Date().toISOString(),
-        fecha_bcu: ultimaFecha
-      };
-
-      // Mostrar preview
-      document.getElementById('cotiz-preview').style.display='block';
-      document.getElementById('cotiz-preview-fecha').textContent = 'Fecha BCU: ' + ultimaFecha + ' · Archivo: ' + file.name;
-      document.getElementById('cotiz-preview-metrics').innerHTML =
-        metricHTML('USD venta', '$'+usdV.toFixed(2)) +
-        metricHTML('USD compra', '$'+(usdC||usdV).toFixed(2)) +
-        metricHTML('UI', uiV?'$'+uiV.toFixed(4):'—') +
-        metricHTML('EUR venta', eurV?'$'+eurV.toFixed(2):'—');
-      setImportMsg('✓ Archivo leído correctamente. Revisá los valores y guardá.', 'green');
-    } catch(err){
-      console.error(err);
-      setImportMsg('Error leyendo el archivo: '+err.message, 'red');
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function metricHTML(lbl, val){
-  return '<div class="metric"><div class="metric-lbl">'+lbl+'</div><div class="metric-val blue">'+val+'</div></div>';
-}
-function setImportMsg(msg, color){
-  var el = document.getElementById('cotiz-import-msg');
-  el.textContent = msg;
-  el.style.color = color==='red'?'var(--red)':color==='green'?'var(--green)':'var(--muted)';
-}
-
-async function guardarCotizaciones(){
-  if(!_cotizLeidas){ alert('Primero importá un archivo.'); return; }
-  setImportMsg('Guardando en Firestore…','muted');
-  try{
-    var fb = window._fb;
-    await fb.setDoc(fb.doc(fb.db,'config','cotizaciones'), _cotizLeidas);
-    setImportMsg('✓ Cotizaciones guardadas y app actualizada.','green');
-    // Actualizar topbar inmediatamente
-    state.cotiz = {usd:_cotizLeidas.usd_venta, ui:_cotizLeidas.ui_venta||6.28, eur:_cotizLeidas.eur_venta||47};
-    document.getElementById('c-usd-c').textContent = '$'+_cotizLeidas.usd_compra.toFixed(2);
-    document.getElementById('c-usd-v').textContent = '$'+_cotizLeidas.usd_venta.toFixed(2);
-    document.getElementById('c-ui').textContent = _cotizLeidas.ui_venta?'$'+_cotizLeidas.ui_venta.toFixed(4):'—';
-    document.getElementById('c-ui2').textContent = _cotizLeidas.ui_venta?'$'+_cotizLeidas.ui_venta.toFixed(4):'—';
-    document.getElementById('c-eur').textContent = _cotizLeidas.eur_venta?'$'+_cotizLeidas.eur_venta.toFixed(2):'—';
-    document.getElementById('sdot').className='status-dot ok';
-    document.getElementById('cotiz-status').textContent='BCU actualizado · '+_cotizLeidas.fecha_bcu;
-    cargarUltimaCotiz();
-  } catch(err){
-    console.error(err);
-    setImportMsg('Error guardando: '+err.message,'red');
-  }
-}
-
-async function cargarUltimaCotiz(){
-  var el = document.getElementById('cotiz-fs-info');
-  if(!el) return;
-  try{
-    var fb = window._fb;
-    var docSnap = await fb.getDocs(fb.collection(fb.db,'config'));
-    var data = null;
-    docSnap.forEach(function(d){ if(d.id==='cotizaciones') data=d.data(); });
-    if(data){
-      el.innerHTML = '<strong>USD venta:</strong> $'+data.usd_venta.toFixed(2)
-        +' &nbsp;|&nbsp; <strong>UI:</strong> $'+(data.ui_venta||0).toFixed(4)
-        +' &nbsp;|&nbsp; <strong>EUR:</strong> $'+(data.eur_venta||0).toFixed(2)
-        +'<br><span style="color:var(--muted);font-size:11px">Actualizado: '+new Date(data.actualizado).toLocaleString('es-UY')
-        +(data.fecha_bcu ? ' · Fecha BCU: '+data.fecha_bcu : '')+'</span>';
-    } else {
-      el.textContent = 'Sin cotizaciones guardadas todavía. Importá el Excel del BCU.';
-    }
-  } catch(e){
-    el.textContent = 'Error conectando con Firestore.';
+    document.getElementById('cotiz-status').textContent = 'Sin conexión BCU — valores de referencia';
+    document.getElementById('c-usd-c').textContent='$43.20'; document.getElementById('c-usd-v').textContent='$43.80';
+    document.getElementById('c-ui').textContent='$6.2800'; document.getElementById('c-ui2').textContent='$6.2840';
+    document.getElementById('c-eur').textContent='$47.20';
+    state.cotiz = {usd:43.8, ui:6.28, eur:47.2};
   }
 }
 </script>

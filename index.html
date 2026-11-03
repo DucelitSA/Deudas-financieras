@@ -320,12 +320,23 @@ tr:last-child td{border-bottom:none}
       <!-- ══ COMPARAR ══ -->
       <div class="panel" id="p-comp">
         <div class="card" style="margin-bottom:14px">
-          <div class="card-hdr"><span>Elegí dos escenarios guardados en Firestore</span>
+          <div class="card-hdr"><span>Elegí dos escenarios a comparar</span>
             <button class="btn-sm" onclick="cargarEscenariosParaComparar()"><i class="ti ti-refresh"></i> Actualizar lista</button>
           </div>
           <div class="scenario-select">
-            <select id="sel-esc-a"><option value="">— Escenario A —</option></select>
-            <select id="sel-esc-b"><option value="">— Escenario B —</option></select>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted);font-weight:600">ESCENARIO A</label>
+              <select id="sel-esc-a"><option value="">— Seleccionar —</option></select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted);font-weight:600">ESCENARIO B</label>
+              <select id="sel-esc-b"><option value="">— Seleccionar —</option></select>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">
+                <input type="checkbox" id="chk-combinar" onchange="toggleCombinar(this.checked)" style="margin-right:4px">
+                <label for="chk-combinar" style="cursor:pointer">Combinar con otro escenario (ej: préstamo + REIF)</label>
+              </div>
+              <select id="sel-esc-b2" style="display:none"><option value="">— Segundo escenario a combinar —</option></select>
+            </div>
           </div>
           <button class="btn-calc" style="width:auto;padding:9px 28px" onclick="compararEscenarios()"><i class="ti ti-arrows-exchange"></i> Comparar</button>
         </div>
@@ -974,7 +985,7 @@ window._supuestos = {
  * Resultado: intereses en USD nominales al TC del momento de cada pago.
  */
 function calcInteresesRealesUSD(s, ipcAnual, devalAnual, tc0){
-  var rows = calcAmortTramos(s.monto, s.tramos);
+  var rows = s._rows || calcAmortTramos(s.monto, s.tramos);
   var ipcMens   = Math.pow(1 + ipcAnual/100,  1/12) - 1;
   var devalMens = Math.pow(1 + devalAnual/100, 1/12) - 1;
   var ui0 = state.cotiz.ui || 6.69;
@@ -1177,31 +1188,76 @@ window._devalCustom = [0, 6, 10];
 function cargarEscenariosParaComparar(){
   var selA = document.getElementById('sel-esc-a');
   var selB = document.getElementById('sel-esc-b');
-  var opts = '<option value="">— Seleccionar —</option>' + _escenariosCache.map(function(s){
-    return '<option value="'+s.id+'">'+s.nombre+' ('+fmt(s.monto,s.moneda)+')</option>';
-  }).join('');
-  selA.innerHTML = opts;
-  selB.innerHTML = opts;
-  if(!_escenariosCache.length) cargarHistorial().then(function(){
-    var opts2 = '<option value="">— Seleccionar —</option>' + _escenariosCache.map(function(s){
+  var selB2 = document.getElementById('sel-esc-b2');
+  function buildOpts(placeholder){
+    return '<option value="">'+placeholder+'</option>' + _escenariosCache.map(function(s){
       return '<option value="'+s.id+'">'+s.nombre+' ('+fmt(s.monto,s.moneda)+')</option>';
     }).join('');
-    selA.innerHTML = opts2; selB.innerHTML = opts2;
-  });
+  }
+  function setOpts(){
+    selA.innerHTML  = buildOpts('— Seleccionar —');
+    selB.innerHTML  = buildOpts('— Seleccionar —');
+    selB2.innerHTML = buildOpts('— Segundo escenario a combinar —');
+  }
+  setOpts();
+  if(!_escenariosCache.length) cargarHistorial().then(setOpts);
+}
+
+function toggleCombinar(on){
+  document.getElementById('sel-esc-b2').style.display = on ? '' : 'none';
+}
+
+/* Combina dos escenarios en uno virtual: suma flujos mes a mes */
+function combinarEscenarios(sBase, sExtra){
+  var rBase  = calcAmortTramos(sBase.monto,  sBase.tramos);
+  var rExtra = calcAmortTramos(sExtra.monto, sExtra.tramos);
+  var maxLen = Math.max(rBase.length, rExtra.length);
+  var rows = [];
+  for(var i=0; i<maxLen; i++){
+    var a = rBase[i]  || {cuota:0, cap:0, int:0, saldo:0, gracia:false, bullet:false};
+    var b = rExtra[i] || {cuota:0, cap:0, int:0, saldo:0, gracia:false, bullet:false};
+    rows.push({ n:i+1, cuota:a.cuota+b.cuota, cap:a.cap+b.cap, int:a.int+b.int,
+                saldo:a.saldo+b.saldo, gracia:false, bullet:false });
+  }
+  // Construir tramos descripción combinada
+  var tramosDesc = sBase.tramos.map(function(t,i){
+    return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':(t.sistema==='bullet'?' [bullet]':' ['+(t.sistema==='frances'?'fr':'al')+']'));
+  }).concat(sExtra.tramos.map(function(t,i){
+    return '+'+(i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':(t.sistema==='bullet'?' [bullet]':' ['+(t.sistema==='frances'?'fr':'al')+']'));
+  }));
+  return {
+    id: '__combinado__',
+    nombre: sBase.nombre + ' + ' + sExtra.nombre,
+    monto:  sBase.monto + (sBase.moneda===sExtra.moneda ? sExtra.monto : sExtra.monto), // aprox mismo
+    moneda: sBase.moneda,
+    tramos: sBase.tramos.concat(sExtra.tramos), // solo para referencia label
+    _rows:  rows,   // flujos ya calculados
+    _tramosDesc: tramosDesc
+  };
 }
 
 function toUYU(v,m){ return m==='UYU'?v: m==='USD'?v*state.cotiz.usd: v*state.cotiz.ui; }
 
 function compararEscenarios(){
-  var idA = document.getElementById('sel-esc-a').value;
-  var idB = document.getElementById('sel-esc-b').value;
+  var idA  = document.getElementById('sel-esc-a').value;
+  var idB  = document.getElementById('sel-esc-b').value;
+  var idB2 = document.getElementById('sel-esc-b2').value;
+  var combinar = document.getElementById('chk-combinar').checked;
   if(!idA || !idB){ alert('Elegí los dos escenarios a comparar.'); return; }
-  var sA = _escenariosCache.find(function(x){return x.id===idA;});
-  var sB = _escenariosCache.find(function(x){return x.id===idB;});
-  if(!sA || !sB) return;
+  if(combinar && !idB2){ alert('Elegí el segundo escenario a combinar con B.'); return; }
+  var sA   = _escenariosCache.find(function(x){return x.id===idA;});
+  var sB0  = _escenariosCache.find(function(x){return x.id===idB;});
+  if(!sA || !sB0) return;
+
+  var sB = sB0;
+  if(combinar){
+    var sB2 = _escenariosCache.find(function(x){return x.id===idB2;});
+    if(!sB2) return;
+    sB = combinarEscenarios(sB0, sB2);
+  }
 
   var rA = calcAmortTramos(sA.monto, sA.tramos);
-  var rB = calcAmortTramos(sB.monto, sB.tramos);
+  var rB = sB._rows || calcAmortTramos(sB.monto, sB.tramos);
   var intA = rA.reduce(function(s,r){return s+r.int;},0);
   var intB = rB.reduce(function(s,r){return s+r.int;},0);
   var totA = rA.reduce(function(s,r){return s+r.cuota;},0);
@@ -1212,9 +1268,13 @@ function compararEscenarios(){
   var html = '<div class="compare-grid">';
   [['A',sA,rA,intA,totA],['B',sB,rB,intB,totB]].forEach(function(x){
     var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4], isW = win===lbl;
-    var tramosTxt = s.tramos.map(function(t,i){
-      return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':(t.sistema==='bullet'?' [bullet]':' ['+(t.sistema==='frances'?'fr':'al')+']'));
-    }).join(' · ');
+    var tramosTxt = (s._tramosDesc
+      ? s._tramosDesc
+      : s.tramos.map(function(t,i){
+          var sys = t.gracia ? 'gracia' : (t.sistema==='bullet' ? 'bullet' : (t.sistema==='frances'?'francés':'alemán'));
+          return 'T'+(i+1)+': '+t.meses+' meses @ '+t.tasa+'% ('+sys+')';
+        })
+    ).join(' → ');
     html += '<div class="card"'+(isW?' style="border:2px solid var(--green)"':'')+'>'
       +'<div class="card-hdr">'+s.nombre+(isW?' <span class="winner-tag">✓ Menor costo</span>':'')+'</div>'
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+tramosTxt+'</div>'
@@ -1251,8 +1311,8 @@ function compararEscenarios(){
 function descargarComparativaPDF(){
   if(!window._compPDF) return;
   var sA = window._compPDF.sA, sB = window._compPDF.sB;
-  var rA = calcAmortTramos(sA.monto, sA.tramos);
-  var rB = calcAmortTramos(sB.monto, sB.tramos);
+  var rA = sA._rows || calcAmortTramos(sA.monto, sA.tramos);
+  var rB = sB._rows || calcAmortTramos(sB.monto, sB.tramos);
   var intA = rA.reduce(function(s,r){return s+r.int;},0);
   var intB = rB.reduce(function(s,r){return s+r.int;},0);
   var totA = rA.reduce(function(s,r){return s+r.cuota;},0);
@@ -1281,8 +1341,11 @@ function descargarComparativaPDF(){
   }
 
   function tramosTxt(s){
+    if(s._tramosDesc) return s._tramosDesc.join('<br>');
     return s.tramos.map(function(t,i){
-      return (i+1)+') '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' [gracia — capitaliza]':(t.sistema==='bullet'?' [bullet — solo intereses]':' ['+(t.sistema==='frances'?'francés':'alemán')+']'));
+      var sys = t.gracia ? 'Gracia (capitaliza)' : (t.sistema==='bullet' ? 'Bullet (solo intereses)' : (t.sistema==='frances'?'Francés':'Alemán'));
+      var tem = (Math.pow(1+t.tasa/100, 1/12)-1)*100;
+      return '<b>T'+(i+1)+'</b>: '+t.meses+' meses &nbsp;·&nbsp; TNA '+t.tasa+'% &nbsp;·&nbsp; TEM '+tem.toFixed(4)+'% &nbsp;·&nbsp; '+sys;
     }).join('<br>');
   }
 

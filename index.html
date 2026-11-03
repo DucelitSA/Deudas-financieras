@@ -113,11 +113,13 @@ td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--border);color:
 td:first-child{text-align:center;color:var(--muted);font-family:sans-serif}
 tr:hover td{background:var(--green-pale)}
 tr.row-gracia td{background:#fdf3e3}
+tr.row-bullet td{background:#e8f0fb}
 tr:last-child td{border-bottom:none}
 .bar-c{display:inline-block;height:5px;background:var(--green);border-radius:1px;vertical-align:middle}
 .bar-i{display:inline-block;height:5px;background:#d9534f;border-radius:1px;vertical-align:middle}
 .legend{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
 .tag-gracia{font-size:9px;background:#fdf3e3;color:var(--amber);padding:1px 6px;border-radius:8px;font-weight:600}
+.tag-bullet{font-size:9px;background:#e8f0fb;color:#3b7de8;padding:1px 6px;border-radius:8px;font-weight:600}
 
 /* COMPARE */
 .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -305,7 +307,8 @@ tr:last-child td{border-bottom:none}
             <div class="legend">
               <span><span class="bar-c" style="width:14px;display:inline-block;margin-right:4px"></span>Capital</span>
               <span><span class="bar-i" style="width:14px;display:inline-block;margin-right:4px"></span>Interés</span>
-              <span><span class="tag-gracia">Gracia</span> mes en período de gracia (capitaliza)</span>
+              <span><span class="tag-gracia">Gracia</span> capitaliza interés</span>
+              <span><span class="tag-bullet">Bullet</span> solo intereses, capital congelado</span>
             </div>
             <div class="tbl-wrap" id="tbl-wrap">
               <div class="empty-state"><i class="ti ti-table-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Completá los tramos y presioná Calcular</div>
@@ -532,12 +535,16 @@ function renderTramos(){
         +'<div class="radio-grp">'
           +'<div class="ropt'+(t.sistema==='frances'?' sel':'')+'" onclick="actualizarTramoSys('+i+',\'frances\',this)">Francés</div>'
           +'<div class="ropt'+(t.sistema==='aleman'?' sel':'')+'" onclick="actualizarTramoSys('+i+',\'aleman\',this)">Alemán</div>'
+          +'<div class="ropt'+(t.sistema==='bullet'?' sel':'')+'" onclick="actualizarTramoSys('+i+',\'bullet\',this)">Bullet</div>'
         +'</div>'
       +'</div>'
-      +'<div class="tramo-gracia">'
-        +'<input type="checkbox" id="gracia-'+i+'" '+(t.gracia?'checked':'')+' onchange="actualizarTramo('+i+',\'gracia\',this.checked)">'
-        +'<label for="gracia-'+i+'" style="margin:0;cursor:pointer">Período de gracia (no se paga, el interés se capitaliza al capital)</label>'
-      +'</div>'
+      +(t.sistema!=='bullet'
+        ? '<div class="tramo-gracia">'
+            +'<input type="checkbox" id="gracia-'+i+'" '+(t.gracia?'checked':'')+' onchange="actualizarTramo('+i+',\'gracia\',this.checked)">'
+            +'<label for="gracia-'+i+'" style="margin:0;cursor:pointer">Período de gracia (no se paga, el interés se capitaliza al capital)</label>'
+          +'</div>'
+        : '<div class="tramo-gracia" style="color:var(--muted);font-style:italic"><i class="ti ti-info-circle"></i> Solo paga intereses — capital congelado, sin capitalizar</div>'
+      )
     +'</div>';
   }).join('');
 }
@@ -566,13 +573,13 @@ function calcAmortTramos(montoInicial, listaTramos){
   var rows = [];
   var nGlobal = 0;
 
-  // Meses de amortización (no-gracia) que quedan desde cada tramo en adelante,
+  // Meses de amortización (no-gracia, no-bullet) que quedan desde cada tramo en adelante,
   // incluyendo el propio tramo. Esto es lo que usa el francés/alemán para que
   // el saldo llegue exactamente a cero al final del ÚLTIMO tramo, no antes.
   var mesesAmortRestantes = [];
   var acc = 0;
   for (var k2 = listaTramos.length - 1; k2 >= 0; k2--) {
-    if (!listaTramos[k2].gracia) acc += listaTramos[k2].meses;
+    if (!listaTramos[k2].gracia && listaTramos[k2].sistema !== 'bullet') acc += listaTramos[k2].meses;
     mesesAmortRestantes[k2] = acc;
   }
 
@@ -587,6 +594,16 @@ function calcAmortTramos(montoInicial, listaTramos){
         var interesG = saldo*tm;
         saldo += interesG; // capitaliza
         rows.push({ n:nGlobal, cuota:0, cap:0, int:interesG, saldo:saldo, gracia:true });
+      }
+      continue;
+    }
+
+    if (tr.sistema === 'bullet'){
+      // Solo paga intereses — capital congelado (no capitaliza, no amortiza)
+      for (var mb=1; mb<=tr.meses; mb++){
+        nGlobal++;
+        var interesBullet = saldo*tm;
+        rows.push({ n:nGlobal, cuota:interesBullet, cap:0, int:interesBullet, saldo:saldo, gracia:false, bullet:true });
       }
       continue;
     }
@@ -644,8 +661,8 @@ function buildTableHTML(rows, mon){
   var h='<table><thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th><th style="width:76px">Dist.</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var pct = r.cuota>0 ? r.cap/r.cuota : 0;
-    h += '<tr'+(r.gracia?' class="row-gracia"':'')+'>'
-      +'<td>'+r.n+(r.gracia?' <span class="tag-gracia">G</span>':'')+'</td>'
+    h += '<tr'+(r.gracia?' class="row-gracia"':(r.bullet?' class="row-bullet"':''))+'>'
+      +'<td>'+r.n+(r.gracia?' <span class="tag-gracia">G</span>':(r.bullet?' <span class="tag-bullet">B</span>':''))+'</td>'
       +'<td>'+(r.gracia?'<em style="font-style:normal;color:var(--amber)">capitaliza</em>':fmt(r.cuota,mon))+'</td>'
       +'<td>'+fmt(r.cap,mon)+'</td>'
       +'<td>'+fmt(r.int,mon)+'</td>'
@@ -791,13 +808,13 @@ function buildPrintHTML(s){
   var now = new Date().toLocaleDateString('es-UY',{year:'numeric',month:'long',day:'numeric'});
   var monLbl = s.moneda==='UYU'?'Pesos uruguayos (UYU)': s.moneda==='USD'?'Dólares (USD)':'Unidades Indexadas (UI)';
   var tramosTxt = s.tramos.map(function(t,i){
-    return 'T'+(i+1)+': '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' (gracia)':' · '+(t.sistema==='frances'?'francés':'alemán'));
+    return 'T'+(i+1)+': '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' (gracia)':(t.sistema==='bullet'?' (bullet)':' · '+(t.sistema==='frances'?'francés':'alemán')));
   }).join(' → ');
 
   var filas='';
   rows.forEach(function(r){
-    filas += '<tr'+(r.gracia?' class="g"':'')+'>'
-      +'<td>'+r.n+(r.gracia?' G':'')+'</td>'
+    filas += '<tr'+(r.gracia?' class="g"':(r.bullet?' class="row-bullet"':''))+'>'
+      +'<td>'+r.n+(r.gracia?' G':(r.bullet?' B':''))+'</td>'
       +'<td>'+(r.gracia?'capitaliza':fmt(r.cuota,s.moneda))+'</td>'
       +'<td>'+fmt(r.cap,s.moneda)+'</td>'
       +'<td>'+fmt(r.int,s.moneda)+'</td>'
@@ -876,7 +893,7 @@ function descargarExcel(){
   var dataAmort = rows.map(function(r){
     return {
       'Mes': r.n,
-      'Período': r.gracia ? 'Gracia' : 'Amortización',
+      'Período': r.gracia ? 'Gracia' : (r.bullet ? 'Bullet' : 'Amortización'),
       'Cuota': r.gracia ? 0 : Math.round(r.cuota*100)/100,
       'Capital': Math.round(r.cap*100)/100,
       'Interés': Math.round(r.int*100)/100,
@@ -907,8 +924,8 @@ function descargarExcel(){
       'Tramo': i+1,
       'Meses': t.meses,
       'Tasa nominal anual (%)': t.tasa,
-      'Sistema': t.gracia ? '—' : (t.sistema==='frances'?'Francés':'Alemán'),
-      'Período de gracia': t.gracia ? 'Sí (capitaliza interés)' : 'No'
+      'Sistema': t.gracia ? '—' : (t.sistema==='bullet'?'Bullet':t.sistema==='frances'?'Francés':'Alemán'),
+      'Período de gracia': t.gracia ? 'Sí (capitaliza interés)' : (t.sistema==='bullet'?'Bullet (solo intereses)':'No')
     };
   });
 
@@ -1196,7 +1213,7 @@ function compararEscenarios(){
   [['A',sA,rA,intA,totA],['B',sB,rB,intB,totB]].forEach(function(x){
     var lbl=x[0], s=x[1], r=x[2], inte=x[3], tot=x[4], isW = win===lbl;
     var tramosTxt = s.tramos.map(function(t,i){
-      return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':' ['+(t.sistema==='frances'?'fr':'al')+']');
+      return (i+1)+') '+t.meses+'m@'+t.tasa+'%'+(t.gracia?' [gracia]':(t.sistema==='bullet'?' [bullet]':' ['+(t.sistema==='frances'?'fr':'al')+']'));
     }).join(' · ');
     html += '<div class="card"'+(isW?' style="border:2px solid var(--green)"':'')+'>'
       +'<div class="card-hdr">'+s.nombre+(isW?' <span class="winner-tag">✓ Menor costo</span>':'')+'</div>'
@@ -1265,7 +1282,7 @@ function descargarComparativaPDF(){
 
   function tramosTxt(s){
     return s.tramos.map(function(t,i){
-      return (i+1)+') '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' [gracia — capitaliza]':' ['+(t.sistema==='frances'?'francés':'alemán')+']');
+      return (i+1)+') '+t.meses+'m @ '+t.tasa+'%'+(t.gracia?' [gracia — capitaliza]':(t.sistema==='bullet'?' [bullet — solo intereses]':' ['+(t.sistema==='frances'?'francés':'alemán')+']'));
     }).join('<br>');
   }
 
@@ -1282,9 +1299,9 @@ function descargarComparativaPDF(){
     var mostrar = rows.length <= 30 ? rows : rows.slice(0,24).concat([null]).concat(rows.slice(-6));
     mostrar.forEach(function(r){
       if(!r){ h+='<tr><td colspan="5" style="text-align:center;padding:4px;color:#5c6b63;font-style:italic">… filas intermedias omitidas …</td></tr>'; return; }
-      var bg = r.gracia ? 'background:#fdf3e3' : (rows.indexOf(r)%2===0?'':'background:#f9fcfa');
+      var bg = r.gracia ? 'background:#fdf3e3' : (r.bullet ? 'background:#e8f0fb' : (rows.indexOf(r)%2===0?'':'background:#f9fcfa'));
       h+='<tr style="'+bg+'">'
-        +'<td style="padding:4px 6px;text-align:center;color:#5c6b63;border-bottom:1px solid #e8f0ea">'+r.n+(r.gracia?' G':'')+'</td>'
+        +'<td style="padding:4px 6px;text-align:center;color:#5c6b63;border-bottom:1px solid #e8f0ea">'+r.n+(r.gracia?' G':(r.bullet?' B':''))+'</td>'
         +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+(r.gracia?'capitaliza':fmt(r.cuota,moneda))+'</td>'
         +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+fmt(r.cap,moneda)+'</td>'
         +'<td style="padding:4px 6px;text-align:right;font-family:Courier New,monospace;border-bottom:1px solid #e8f0ea">'+fmt(r.int,moneda)+'</td>'

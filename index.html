@@ -730,6 +730,7 @@ async function cargarHistorial(){
         +'<div class="hist-main">'+s.nombre+' · '+fmt(s.monto,s.moneda)+' · '+s.tramos.length+' tramo(s) · '+s.meses+' meses totales</div>'
         +'<div class="hist-sub">Cuota inicial: '+fmt(s.cuotaInicial,s.moneda)+' &nbsp;|&nbsp; Intereses: '+fmt(s.intereses,s.moneda)+' &nbsp;|&nbsp; TIR: '+s.tir.toFixed(2)+'%</div>'
         +'<div class="hist-actions">'
+          +'<button class="btn-hist-ver" onclick="editarEscenario(\''+s.id+'\')"><i class="ti ti-pencil"></i> Editar</button>'
           +'<button class="btn-hist-ver" onclick="verSimulacion(\''+s.id+'\')"><i class="ti ti-table"></i> Ver amortización</button>'
           +'<button class="btn-sm danger" onclick="eliminarSim(\''+s.id+'\')"><i class="ti ti-trash"></i> Eliminar</button>'
         +'</div></div>';
@@ -747,6 +748,37 @@ async function eliminarSim(id){
     await fb.deleteDoc(fb.doc(fb.db,'escenarios',id));
     cargarHistorial();
   }catch(e){ alert('Error al eliminar.'); console.error(e); }
+}
+
+function editarEscenario(id){
+  var s = _escenariosCache.find(function(x){ return x.id===id; });
+  if(!s){ alert('No se encontró el escenario.'); return; }
+
+  // Cargar nombre
+  document.getElementById('f-nombre').value = s.nombre || '';
+
+  // Cargar moneda
+  state.mon = s.moneda || 'UYU';
+  var monMap = {'UYU':'$ Pesos','USD':'USD','UI':'UI'};
+  document.querySelectorAll('.mon-btn').forEach(function(btn){
+    btn.classList.toggle('active', btn.textContent.trim() === (monMap[state.mon]||'$ Pesos'));
+  });
+  var mlbl = function(m){ return m==='UYU'?'$ UYU':m==='USD'?'U$S':'UI'; };
+  document.getElementById('lbl-monto').textContent = 'Monto inicial ('+mlbl(state.mon)+')';
+
+  // Cargar monto con formato
+  var montoFmt = s.monto ? parseInt(s.monto).toLocaleString('es-UY') : '';
+  document.getElementById('f-monto').value = montoFmt;
+
+  // Cargar tramos
+  tramos = (s.tramos || []).map(function(t){ return Object.assign({}, t); });
+  renderTramos();
+
+  // Ir a la pestaña calcular
+  showTab('calc');
+
+  // Scroll arriba
+  document.getElementById('p-calc').scrollTop = 0;
 }
 
 /* ══════════════════════════════════════
